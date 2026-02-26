@@ -137,4 +137,4 @@ yt-dlp --version
 
 ---
 
-**Built by GravityClaw** 🚀
+**Built by Clipnotic** 🚀

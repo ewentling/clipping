@@ -14,7 +14,7 @@ async function httpGet(url) {
 }
 
 async function testClipping() {
-  console.log('🧪 Running GravityClaw test suite...\n');
+  console.log('🧪 Running Clipnotic test suite...\n');
 
   // 1. Dependency checks
   console.log('── Checking system dependencies ──');

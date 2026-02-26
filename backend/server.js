@@ -70,7 +70,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    service: 'GravityClaw Clipping API'
+    service: 'Clipnotic Clipping API'
   });
 });
 
@@ -181,7 +181,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 GravityClaw Clipping API running on port ${PORT}`);
+  console.log(`🚀 Clipnotic Clipping API running on port ${PORT}`);
 });
 
 module.exports = app;

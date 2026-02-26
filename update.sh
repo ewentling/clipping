@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# GravityClaw – Update Script
+# Clipnotic – Update Script
 #
 # Usage:  ./update.sh [--branch <name>] [--no-build] [--backup-dir <path>]
 #
@@ -299,7 +299,7 @@ fi
 # ---------------------------------------------------------------------------
 echo ""
 echo -e "${GREEN}${BOLD}================================================="
-echo -e " ✅  GravityClaw update complete!"
+echo -e " ✅  Clipnotic update complete!"
 echo -e "=================================================${NC}"
 echo ""
 echo -e "  Git commit : $(git rev-parse --short HEAD)"

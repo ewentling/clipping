@@ -1,4 +1,4 @@
-# 🎬 GravityClaw – Viral Video Clipping SaaS
+# 🎬 Clipnotic – Viral Video Clipping SaaS
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
@@ -93,4 +93,4 @@ Use responsibly and respect YouTube's Terms of Service. Only download content yo
 
 ---
 
-**Built with ❤️ by GravityClaw**
+**Built with ❤️ by Clipnotic**

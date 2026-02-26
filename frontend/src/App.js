@@ -227,7 +227,7 @@ function App() {
           {apiOnline === null ? 'Connecting...' : apiOnline ? 'API Online' : 'API Offline'}
         </div>
         <h1>
-          🎬 GravityClaw
+          🎬 Clipnotic
           {clips.length > 0 && (
             <span style={{ fontSize: '1rem', background: '#10b981', color: 'white', borderRadius: '20px', padding: '2px 10px', marginLeft: '12px', fontWeight: 600, verticalAlign: 'middle' }} aria-label={`${clips.length} clips generated`}>
               {clips.length} clips
