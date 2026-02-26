@@ -21,6 +21,7 @@ function App() {
   const [isLoadingClips, setIsLoadingClips] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [retryFn, setRetryFn] = useState(null);
   const pollRef = useRef(null);
   const clipsRef = useRef(null);
 
@@ -234,10 +235,21 @@ function App() {
         {error && (
           <div className="alert alert-error" role="alert">
             <span>⚠️</span>
-            <span>{error}</span>
-            <button className="btn btn-secondary" style={{ marginLeft: 'auto' }} onClick={() => setError(null)}>
-              Dismiss
-            </button>
+            <span>
+              {error.includes('429') || error.toLowerCase().includes('rate limit')
+                ? 'Too many requests – please wait a moment before trying again.'
+                : error}
+            </span>
+            <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+              {retryFn && (
+                <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.9rem' }} onClick={() => { setError(null); retryFn(); }}>
+                  🔄 Retry
+                </button>
+              )}
+              <button className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.9rem' }} onClick={() => { setError(null); setRetryFn(null); }}>
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
         <VideoInput

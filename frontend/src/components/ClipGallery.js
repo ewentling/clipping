@@ -8,6 +8,10 @@ function ClipGallery({ clips, onDownload }) {
   const [previewClip, setPreviewClip] = useState(null);
   const [sortBy, setSortBy] = useState('score');
   const [filterType, setFilterType] = useState('all');
+  const [editingTitle, setEditingTitle] = useState(null); // clipId being edited
+  const [editTitleValue, setEditTitleValue] = useState('');
+  const [localTitles, setLocalTitles] = useState({});
+  const [batchProgress, setBatchProgress] = useState(null); // { done, total }
 
   const sortedFilteredClips = useMemo(() => {
     let result = [...clips];
@@ -18,15 +22,12 @@ function ClipGallery({ clips, onDownload }) {
       result.sort((a, b) => (b.score || 0) - (a.score || 0));
     } else if (sortBy === 'duration') {
       result.sort((a, b) => (parseFloat(a.duration) || 0) - (parseFloat(b.duration) || 0));
-    } else if (sortBy === 'index') {
-      // Original order preserved
     }
     return result;
   }, [clips, sortBy, filterType]);
 
   const uniqueTypes = useMemo(() => {
-    const types = [...new Set(clips.map(c => c.type || 'clip'))];
-    return types;
+    return [...new Set(clips.map(c => c.type || 'clip'))];
   }, [clips]);
 
   const formatDuration = (seconds) => {
@@ -68,7 +69,6 @@ function ClipGallery({ clips, onDownload }) {
       await navigator.clipboard.writeText(url);
       toast.success('Link copied to clipboard!');
     } catch {
-      // Fallback for older browsers
       const ta = document.createElement('textarea');
       ta.value = url;
       ta.style.position = 'fixed';
@@ -82,26 +82,66 @@ function ClipGallery({ clips, onDownload }) {
   };
 
   const handleShareTwitter = (clip) => {
-    const text = encodeURIComponent(`Check out this viral clip: ${clip.title || 'Viral Clip'} `);
+    const title = localTitles[clip.clipId] || clip.title || 'Viral Clip';
+    const text = encodeURIComponent(`Check out this viral clip: ${title} `);
     window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank', 'noopener,noreferrer');
   };
+
+  const startEditTitle = (clip) => {
+    setEditingTitle(clip.clipId);
+    setEditTitleValue(localTitles[clip.clipId] || clip.title || '');
+  };
+
+  const saveTitle = (clipId) => {
+    if (editTitleValue.trim()) {
+      setLocalTitles(prev => ({ ...prev, [clipId]: editTitleValue.trim() }));
+      toast.success('Title updated!');
+    }
+    setEditingTitle(null);
+  };
+
+  const handleBatchDownload = async () => {
+    const total = clips.length;
+    setBatchProgress({ done: 0, total });
+    for (let i = 0; i < clips.length; i++) {
+      await onDownload(clips[i].clipId);
+      setBatchProgress({ done: i + 1, total });
+      // Small delay between downloads to avoid browser blocking
+      if (i < clips.length - 1) await new Promise(r => setTimeout(r, 600));
+    }
+    setBatchProgress(null);
+    toast.success(`Downloaded all ${total} clips!`);
+  };
+
+  const getDisplayTitle = (clip, index) =>
+    localTitles[clip.clipId] || clip.title || `Viral Clip #${index + 1}`;
 
   return (
     <div className="card">
       {previewClip && (
         <PreviewModal clip={previewClip} onClose={() => setPreviewClip(null)} />
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
         <h2 className="card-title" style={{ marginBottom: 0 }}>
           <span>✨</span>Your Viral Clips ({clips.length})
         </h2>
-        <button
-          className="btn btn-success"
-          onClick={() => clips.forEach(clip => onDownload(clip.clipId))}
-          aria-label="Download all clips"
-        >
-          <span>⬇️</span>Download All
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {batchProgress && (
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Downloading {batchProgress.done}/{batchProgress.total}...
+            </span>
+          )}
+          <button
+            className="btn btn-success"
+            onClick={handleBatchDownload}
+            disabled={!!batchProgress}
+            aria-label={batchProgress ? `Downloading ${batchProgress.done} of ${batchProgress.total}` : 'Download all clips'}
+          >
+            {batchProgress
+              ? <><span className="loading-spinner" aria-hidden="true" />{batchProgress.done}/{batchProgress.total}</>
+              : <><span>⬇️</span>Download All</>}
+          </button>
+        </div>
       </div>
 
       {/* Filters & Sort */}
@@ -151,12 +191,43 @@ function ClipGallery({ clips, onDownload }) {
             >
               <img
                 src={`${API_BASE_URL}${endpoints.thumbnail(clip.clipId)}`}
-                alt={clip.title || `Clip ${index + 1} thumbnail`}
+                alt={getDisplayTitle(clip, index) + ' thumbnail'}
                 className="clip-thumbnail"
                 onError={(e) => { e.target.src = `https://img.youtube.com/vi/default/hqdefault.jpg`; }}
               />
               <div className="clip-info">
-                <h4>{clip.title || `Viral Clip #${index + 1}`}</h4>
+                {/* Inline editable title */}
+                {editingTitle === clip.clipId ? (
+                  <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
+                    <input
+                      type="text"
+                      value={editTitleValue}
+                      onChange={e => setEditTitleValue(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') saveTitle(clip.clipId);
+                        if (e.key === 'Escape') setEditingTitle(null);
+                      }}
+                      autoFocus
+                      aria-label="Edit clip title"
+                      style={{ flex: 1, padding: '4px 8px', border: '1px solid #667eea', borderRadius: '4px', fontSize: '0.9rem', background: 'var(--input-bg)', color: 'var(--text-primary)' }}
+                    />
+                    <button onClick={() => saveTitle(clip.clipId)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: '#667eea', color: 'white', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Save title">✓</button>
+                    <button onClick={() => setEditingTitle(null)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: 'var(--btn-secondary-bg)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Cancel edit">✕</button>
+                  </div>
+                ) : (
+                  <h4
+                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    onClick={() => startEditTitle(clip)}
+                    title="Click to edit title"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={e => e.key === 'Enter' && startEditTitle(clip)}
+                    aria-label={`Edit title: ${getDisplayTitle(clip, index)}`}
+                  >
+                    {getDisplayTitle(clip, index)}
+                    <span style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 400 }}>✏️</span>
+                  </h4>
+                )}
                 <div className="clip-meta">
                   <span aria-label={`Type: ${clip.type || 'clip'}, Duration: ${formatDuration(clip.duration)}`}>
                     {getClipTypeIcon(clip.type || 'clip')} {formatDuration(clip.duration)}
@@ -185,14 +256,14 @@ function ClipGallery({ clips, onDownload }) {
                   <button
                     className="btn-preview"
                     onClick={() => setPreviewClip(clip)}
-                    aria-label={`Preview ${clip.title || `Clip ${index + 1}`}`}
+                    aria-label={`Preview ${getDisplayTitle(clip, index)}`}
                   >
                     ▶️ Preview
                   </button>
                   <button
                     className="btn-download"
                     onClick={() => onDownload(clip.clipId)}
-                    aria-label={`Download ${clip.title || `Clip ${index + 1}`}`}
+                    aria-label={`Download ${getDisplayTitle(clip, index)}`}
                   >
                     ⬇️ Download
                   </button>

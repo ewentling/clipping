@@ -58,7 +58,7 @@ const YOUTUBE_URL_RE = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.b
 const VIDEO_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
 
 const isValidYouTubeUrl = (url) =>
-  typeof url === 'string' && (YOUTUBE_URL_RE.test(url) || VIDEO_ID_RE.test(url));
+  typeof url === 'string' && url.length <= 500 && (YOUTUBE_URL_RE.test(url) || VIDEO_ID_RE.test(url));
 
 // Validate clipId / jobId (UUID or alphanumeric)
 const isValidId = (id) => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(id);
