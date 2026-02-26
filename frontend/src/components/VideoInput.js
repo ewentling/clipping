@@ -104,6 +104,14 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
       <h2 className="card-title">
         <span>📺</span>{videoInfo ? 'Video Analyzed' : 'Add YouTube Video'}
       </h2>
+      <div className="step-guide" role="note" aria-label="How it works">
+        <strong>How it works:</strong>
+        <ol className="step-guide-list">
+          <li>Paste a YouTube URL</li>
+          <li>Analyze the video</li>
+          <li>Select clips and generate</li>
+        </ol>
+      </div>
       {!videoInfo ? (
         <form onSubmit={handleSubmit} aria-label="Video URL input form">
           <div className="input-group">
