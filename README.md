@@ -35,12 +35,12 @@
 # Backend
 cd backend
 npm install
-node server.js   # runs on http://localhost:3001
+node server.js   # runs on http://localhost:3230
 
 # Frontend (new terminal)
 cd frontend
 npm install
-npm start        # runs on http://localhost:3000
+npm start        # React dev server on http://localhost:3000 (proxies API to :3230)
 ```
 
 ## 📋 API Reference
@@ -63,11 +63,11 @@ npm start        # runs on http://localhost:3000
 ┌─────────────────────────────────────────────┐
 │          Web Dashboard (React)              │
 │  Dark Mode · Sort/Filter · Preview Modal   │
-│           Port 3000                         │
+│           Port 3230                         │
 └──────────────────┬──────────────────────────┘
                    │ REST API
 ┌──────────────────▼──────────────────────────┐
-│        Express Backend (Port 3001)           │
+│        Express Backend (Port 3230)           │
 │  CORS · Rate Limit · Security Headers       │
 │  clipRoutes · videoRoutes                   │
 └──────────────────┬──────────────────────────┘

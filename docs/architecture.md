@@ -8,7 +8,7 @@ ViralClip is a multi-agent SAAS application that automatically generates 30-60 s
 
 ```
 ┌─────────────────────────────────────────────────┐
-│            React Frontend (Port 3000)            │
+│            React Frontend (Port 3230)            │
 │  ┌─────────────┐ ┌─────────────┐ ┌───────────┐ │
 │  │ VideoInput  │ │ ClipGallery │ │Processing │ │
 │  │ Component   │ │ Component   │ │  Status   │ │
@@ -16,7 +16,7 @@ ViralClip is a multi-agent SAAS application that automatically generates 30-60 s
 └──────────────────┬──────────────────────────────┘
                    │ REST API
 ┌──────────────────▼──────────────────────────────┐
-│          Express Backend (Port 3001)            │
+│          Express Backend (Port 3230)            │
 │  ┌─────────────┐ ┌─────────────┐ ┌───────────┐ │
 │  │ Clip Routes │ │Video Routes │ │   Auth    │ │
 │  └─────────────┘ └─────────────┘ └───────────┘ │

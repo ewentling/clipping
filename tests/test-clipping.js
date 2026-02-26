@@ -28,20 +28,20 @@ async function testClipping() {
   await new Promise(r => setTimeout(r, 500));
 
   // 2. API endpoint check (only if server is running)
-  console.log('\n── Checking API endpoints (requires server on :3001) ──');
+  console.log('\n── Checking API endpoints (requires server on :3230) ──');
   try {
-    const health = await httpGet('http://localhost:3001/api/health');
+    const health = await httpGet('http://localhost:3230/api/health');
     if (health.status === 200 && health.body.status === 'healthy') {
       console.log('✅ GET /api/health – OK');
     } else {
       console.log('⚠️  /api/health returned unexpected response:', health.body);
     }
   } catch {
-    console.log('ℹ️  Server not running on :3001 – skipping API tests');
+    console.log('ℹ️  Server not running on :3230 – skipping API tests');
   }
 
   try {
-    const list = await httpGet('http://localhost:3001/api/clips/list');
+    const list = await httpGet('http://localhost:3230/api/clips/list');
     if (list.status === 200 && list.body.success) {
       console.log('✅ GET /api/clips/list – OK');
     }
@@ -50,7 +50,7 @@ async function testClipping() {
   }
 
   try {
-    const validate = await httpGet('http://localhost:3001/api/videos/validate?url=https://youtube.com/watch?v=dQw4w9WgXcQ');
+    const validate = await httpGet('http://localhost:3230/api/videos/validate?url=https://youtube.com/watch?v=dQw4w9WgXcQ');
     if (validate.status === 200 && validate.body.valid === true) {
       console.log('✅ GET /api/videos/validate – URL correctly validated');
     }

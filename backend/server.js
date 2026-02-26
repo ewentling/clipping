@@ -11,12 +11,12 @@ const clipRoutes = require('./routes/clipRoutes');
 const videoRoutes = require('./routes/videoRoutes');;
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3230;
 
 // Allow specific origins; falls back to localhost for dev
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : ['http://localhost:3000', 'http://localhost:3001'];
+  : ['http://localhost:3000', 'http://localhost:3230'];
 
 app.use(cors({
   origin: (origin, callback) => {
