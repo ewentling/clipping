@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function ProcessingStatus({ jobId, statusMessage }) {
+function ProcessingStatus({ jobId, statusMessage, onCancel }) {
   const [progress, setProgress] = useState(0);
 
   const steps = [
@@ -84,6 +84,14 @@ function ProcessingStatus({ jobId, statusMessage }) {
           <strong>⚠️ Note:</strong> Processing time depends on video length. A 10-minute video typically takes 2-3 minutes to process.
         </p>
       </div>
+
+      {onCancel && (
+        <div style={{ marginTop: '16px', textAlign: 'center' }}>
+          <button className="btn btn-secondary" onClick={onCancel} aria-label="Cancel processing">
+            ✕ Cancel Processing
+          </button>
+        </div>
+      )}
     </div>
   );
 }

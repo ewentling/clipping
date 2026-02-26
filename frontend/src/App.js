@@ -90,6 +90,7 @@ function App() {
       setVideoInfo(analyzeResponse.data.videoInfo);
       setStatusMessage('Video analyzed successfully!');
       toast.success('Video analyzed successfully!', { id: toastId });
+      setIsProcessing(false);
       return analyzeResponse.data;
     } catch (err) {
       const msg = err.response?.data?.error || err.message;
@@ -190,6 +191,17 @@ function App() {
     }
   };
 
+  const handleCancel = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setCurrentJob(null);
+    setIsProcessing(false);
+    setStatusMessage('');
+    toast('Video processing cancelled.');
+  };
+
   const handleClearClips = () => {
     if (clips.length > 0) {
       setShowConfirm(true);
@@ -230,6 +242,20 @@ function App() {
         >
           {darkMode ? '☀️ Light' : '🌙 Dark'}
         </button>
+        <button
+          className="dark-mode-btn"
+          onClick={handleClearClips}
+          aria-label="Clear all clips"
+        >
+          🗑️ Clear
+        </button>
+        <button
+          className="dark-mode-btn"
+          onClick={() => setShowHelp(h => !h)}
+          aria-label="Show keyboard shortcuts"
+        >
+          ⌨️ Help
+        </button>
       </header>
       <main className="main-content" role="main">
         {error && (
@@ -260,7 +286,7 @@ function App() {
           onClear={handleClearClips}
         />
         {currentJob && (
-          <ProcessingStatus jobId={currentJob.id} statusMessage={statusMessage} />
+          <ProcessingStatus jobId={currentJob.id} statusMessage={statusMessage} onCancel={handleCancel} />
         )}
         <div ref={clipsRef}>
           {isLoadingClips && <ClipSkeleton count={3} />}
