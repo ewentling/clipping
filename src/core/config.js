@@ -1,6 +1,6 @@
 // Application Configuration
 module.exports = {
-  PORT: process.env.PORT || 3000,
+  PORT: process.env.PORT || 3230,
   HOST: process.env.HOST || 'localhost',
   
   OUTPUT_DIR: './output',

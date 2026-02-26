@@ -5,3 +5,4 @@ output/*.webm
 *.log
 .DS_Store
 temp/
+frontend/build/

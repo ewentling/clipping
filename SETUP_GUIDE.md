@@ -77,12 +77,12 @@ node src/index.js "https://youtube.com/watch?v=VIDEO_ID" 5
 ### Web Dashboard
 ```bash
 npm start
-# Visit http://localhost:3000
+# Visit http://localhost:3230
 ```
 
 ### API
 ```bash
-curl -X POST http://localhost:3000/api/process \
+curl -X POST http://localhost:3230/api/process \
   -H "Content-Type: application/json" \
   -d '{"videoUrl": "https://youtube.com/watch?v=VIDEO_ID", "clipCount": 5}'
 ```
