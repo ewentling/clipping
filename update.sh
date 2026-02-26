@@ -192,15 +192,19 @@ if [[ -f "frontend/package.json" ]]; then
   success "Frontend dependencies installed"
 fi
 
-# Update yt-dlp if pip is available
+# Pin yt-dlp to a specific reviewed version instead of blindly upgrading.
+# Review the changelog and update this constant after testing each new release.
+YTDLP_VERSION="2026.02.21"
+
+# Install / upgrade yt-dlp to the pinned version if pip is available
 if command -v pip3 &>/dev/null; then
-  info "Updating yt-dlp..."
-  pip3 install --upgrade yt-dlp --quiet && success "yt-dlp updated" \
-    || warn "yt-dlp update failed – continuing"
+  info "Installing yt-dlp==${YTDLP_VERSION}..."
+  pip3 install --quiet "yt-dlp==${YTDLP_VERSION}" && success "yt-dlp ${YTDLP_VERSION} installed" \
+    || warn "yt-dlp install failed – continuing"
 elif command -v pip &>/dev/null; then
-  info "Updating yt-dlp..."
-  pip install --upgrade yt-dlp --quiet && success "yt-dlp updated" \
-    || warn "yt-dlp update failed – continuing"
+  info "Installing yt-dlp==${YTDLP_VERSION}..."
+  pip install --quiet "yt-dlp==${YTDLP_VERSION}" && success "yt-dlp ${YTDLP_VERSION} installed" \
+    || warn "yt-dlp install failed – continuing"
 fi
 
 # ---------------------------------------------------------------------------
