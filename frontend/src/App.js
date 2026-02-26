@@ -235,27 +235,29 @@ function App() {
           )}
         </h1>
         <p>AI-Powered Viral Video Clipping - Turn long videos into shareable clips</p>
-        <button
-          className="dark-mode-btn"
-          onClick={() => setDarkMode(d => !d)}
-          aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {darkMode ? '☀️ Light' : '🌙 Dark'}
-        </button>
-        <button
-          className="dark-mode-btn"
-          onClick={handleClearClips}
-          aria-label="Clear all clips"
-        >
-          🗑️ Clear
-        </button>
-        <button
-          className="dark-mode-btn"
-          onClick={() => setShowHelp(h => !h)}
-          aria-label="Show keyboard shortcuts"
-        >
-          ⌨️ Help
-        </button>
+        <div className="header-actions" role="group" aria-label="Header actions">
+          <button
+            className="dark-mode-btn"
+            onClick={() => setDarkMode(d => !d)}
+            aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {darkMode ? '☀️ Light' : '🌙 Dark'}
+          </button>
+          <button
+            className="dark-mode-btn"
+            onClick={handleClearClips}
+            aria-label="Clear all clips"
+          >
+            🗑️ Clear
+          </button>
+          <button
+            className="dark-mode-btn"
+            onClick={() => setShowHelp(h => !h)}
+            aria-label="Show keyboard shortcuts"
+          >
+            ⌨️ Help
+          </button>
+        </div>
       </header>
       <main className="main-content" role="main">
         {error && (
