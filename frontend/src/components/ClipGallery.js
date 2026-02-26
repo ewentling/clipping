@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { API_BASE_URL, endpoints } from '../config';
+import PreviewModal from './PreviewModal';
 
 function ClipGallery({ clips, onDownload }) {
+  const [previewClip, setPreviewClip] = useState(null);
+
   const formatDuration = (seconds) => {
     const secs = parseFloat(seconds);
     if (secs < 60) return `${secs.toFixed(1)}s`;
     const mins = Math.floor(secs / 60);
     const remainingSecs = (secs % 60).toFixed(1);
-    return `${mins}:${remainingSecs.padStart(2, '0')}`;
+    return `${mins}:${remainingSecs.padStart(4, '0')}`;
   };
 
   const getClipTypeIcon = (type) => {
@@ -15,7 +18,7 @@ function ClipGallery({ clips, onDownload }) {
       case 'hook': return '🎣';
       case 'energy_peak': return '⚡';
       case 'scene_change': return '🎬';
-      default: return '📹';
+      default: return '��';
     }
   };
 
@@ -27,24 +30,62 @@ function ClipGallery({ clips, onDownload }) {
 
   return (
     <div className="card">
+      {previewClip && (
+        <PreviewModal clip={previewClip} onClose={() => setPreviewClip(null)} />
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 className="card-title" style={{ marginBottom: 0 }}><span>✨</span>Your Viral Clips ({clips.length})</h2>
-        <button className="btn btn-success" onClick={() => clips.forEach(clip => onDownload(clip.clipId))}><span>⬇️</span>Download All</button>
+        <button
+          className="btn btn-success"
+          onClick={() => clips.forEach(clip => onDownload(clip.clipId))}
+          aria-label="Download all clips"
+        >
+          <span>⬇️</span>Download All
+        </button>
       </div>
-      <div className="clips-grid">
+      <div className="clips-grid" role="list" aria-label="Generated clips">
         {clips.map((clip, index) => (
-          <div key={clip.clipId} className="clip-card">
-            <img src={`${API_BASE_URL}${endpoints.thumbnail(clip.clipId)}`} alt={clip.title || `Clip ${index + 1}`} className="clip-thumbnail" onError={(e) => { e.target.src = 'https://via.placeholder.com/320x180?text=Clip+Preview'; }} />
+          <div key={clip.clipId} className="clip-card" role="listitem">
+            <img
+              src={`${API_BASE_URL}${endpoints.thumbnail(clip.clipId)}`}
+              alt={clip.title || `Clip ${index + 1} thumbnail`}
+              className="clip-thumbnail"
+              onError={(e) => { e.target.src = `https://img.youtube.com/vi/default/hqdefault.jpg`; }}
+            />
             <div className="clip-info">
               <h4>{clip.title || `Viral Clip #${index + 1}`}</h4>
               <div className="clip-meta">
-                <span>{getClipTypeIcon(clip.type || 'clip')} {formatDuration(clip.duration)}</span>
-                <span className="clip-score" style={{ background: getViralScoreColor(clip.score) }}>{(clip.score * 100).toFixed(0)}% Viral</span>
+                <span aria-label={`Type: ${clip.type || 'clip'}, Duration: ${formatDuration(clip.duration)}`}>
+                  {getClipTypeIcon(clip.type || 'clip')} {formatDuration(clip.duration)}
+                </span>
+                <span
+                  className="clip-score"
+                  style={{ background: getViralScoreColor(clip.score) }}
+                  aria-label={`Viral score: ${(clip.score * 100).toFixed(0)}%`}
+                >
+                  {(clip.score * 100).toFixed(0)}% Viral
+                </span>
               </div>
-              {clip.reason && (<p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '12px', fontStyle: 'italic' }}>"{clip.reason}"</p>)}
+              {clip.reason && (
+                <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '12px', fontStyle: 'italic' }}>
+                  "{clip.reason}"
+                </p>
+              )}
               <div className="clip-actions">
-                <button className="btn-preview" onClick={() => { const video = document.createElement('video'); video.src = `${API_BASE_URL}${endpoints.download(clip.clipId)}`; video.controls = true; video.style.maxWidth = '100%'; const modal = document.createElement('div'); modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:1000;'; const closeBtn = document.createElement('button'); closeBtn.textContent = '✕ Close'; closeBtn.style.cssText = 'position:absolute;top:20px;right:20px;padding:10px 20px;background:white;border:none;border-radius:5px;cursor:pointer;font-weight:bold;'; closeBtn.onclick = () => document.body.removeChild(modal); modal.appendChild(closeBtn); modal.appendChild(video); document.body.appendChild(modal); video.play(); }}>▶️ Preview</button>
-                <button className="btn-download" onClick={() => onDownload(clip.clipId)}>⬇️ Download</button>
+                <button
+                  className="btn-preview"
+                  onClick={() => setPreviewClip(clip)}
+                  aria-label={`Preview ${clip.title || `Clip ${index + 1}`}`}
+                >
+                  ▶️ Preview
+                </button>
+                <button
+                  className="btn-download"
+                  onClick={() => onDownload(clip.clipId)}
+                  aria-label={`Download ${clip.title || `Clip ${index + 1}`}`}
+                >
+                  ⬇️ Download
+                </button>
               </div>
             </div>
           </div>
