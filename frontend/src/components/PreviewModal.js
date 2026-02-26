@@ -1,7 +1,9 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { API_BASE_URL, endpoints } from '../config';
 
 function PreviewModal({ clip, onClose }) {
+  const closeButtonRef = useRef(null);
+
   const handleKeyDown = useCallback(
     (e) => {
       if (e.key === 'Escape') onClose();
@@ -12,6 +14,8 @@ function PreviewModal({ clip, onClose }) {
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     document.body.style.overflow = 'hidden';
+    // Focus the close button for keyboard users
+    closeButtonRef.current?.focus();
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
@@ -29,7 +33,12 @@ function PreviewModal({ clip, onClose }) {
       onClick={onClose}
     >
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose} aria-label="Close preview">
+        <button
+          ref={closeButtonRef}
+          className="modal-close"
+          onClick={onClose}
+          aria-label="Close preview"
+        >
           ✕ Close
         </button>
         <video
@@ -37,6 +46,7 @@ function PreviewModal({ clip, onClose }) {
           controls
           autoPlay
           className="modal-video"
+          aria-label={clip.title || 'Clip preview video'}
         />
         {clip.title && <p className="modal-title">{clip.title}</p>}
       </div>

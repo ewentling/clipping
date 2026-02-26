@@ -5,7 +5,10 @@ const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
 const { v4: uuidv4 } = require('uuid');
 
-dotenv.config();
+dotenv.config()
+
+const clipRoutes = require('./routes/clipRoutes');
+const videoRoutes = require('./routes/videoRoutes');;
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -157,6 +160,9 @@ app.get('/api/videos/validate', (req, res) => {
   const valid = isValidYouTubeUrl(url);
   res.json({ success: true, valid });
 });
+
+app.use('/api/clips', clipRoutes);
+app.use('/api/videos', videoRoutes);
 
 app.use(express.static(path.join(__dirname, '../frontend/build')));
 

@@ -1,65 +1,75 @@
-# 🎬 ViralClip - Viral Video Clipping SAAS
+# 🎬 GravityClaw – Viral Video Clipping SaaS
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
-[![Python](https://img.shields.io/badge/Python-3.x-blue.svg)](https://python.org/)
 
-**Automatically generate 30-60 second viral video clips from long-form YouTube videos.**
+**Automatically generate 30-60 second viral video clips from long-form YouTube videos using AI.**
 
 ## ✨ Features
 
-- 🎯 **AI-Powered Analysis** - Identifies the most engaging moments automatically
-- ⚡ **Multi-Agent Processing** - Parallel processing for faster results
-- 🛡️ **Bot Guard Resistant** - Advanced anti-detection for YouTube downloads
-- 📱 **Social Media Ready** - 30-60 second clips optimized for TikTok, Reels, Shorts
-- 🎨 **Vertical Format** - Optional 9:16 aspect ratio for mobile platforms
-- 🌐 **Web Dashboard** - Beautiful, responsive UI for easy use
-- 🔌 **REST API** - Easy integration with other applications
+### UI
+- 🎯 **AI-Powered Analysis** – Identifies the most engaging moments automatically
+- ⚡ **Multi-Agent Processing** – Parallel processing for faster results
+- 🌙 **Dark Mode** – Full dark/light mode toggle, persisted to localStorage
+- 📋 **Copy Link** – One-click copy of clip download URLs to clipboard
+- 🐦 **Social Share** – Share clips directly to Twitter/X
+- 🔍 **Sort & Filter** – Sort clips by viral score or duration; filter by type
+- ✏️ **Inline Title Editing** – Click any clip title to rename it
+- ⬇️ **Batch Download with Progress** – Download all clips with live counter
+- 🕐 **Recent URLs** – Quick re-use of recently analyzed YouTube URLs
+- 🔔 **Toast Notifications** – Friendly success/error/loading notifications
+- 📱 **Mobile Responsive** – Full responsive layout for all screen sizes
+- ♿ **Accessible** – ARIA labels, roles, keyboard navigation (press `?` for shortcuts)
+- 🔄 **Retry Button** – Retry failed operations from the error banner
+- 💡 **Rate Limit Feedback** – Friendly message when too many requests are made
+
+### Backend
+- 🛡️ **Bot Guard Resistant** – Advanced anti-detection for YouTube downloads
+- 🌐 **REST API** – Full API for video analysis, clip generation, status polling, download & thumbnails
+- 🔒 **Security** – CORS restrictions, input validation, security headers (CSP, X-Frame-Options, etc.)
+- ⚙️ **Rate Limiting** – 100 requests per 15 minutes per IP
 
 ## 🚀 Quick Start
 
 ```bash
-cd clipping
+# Backend
+cd backend
 npm install
-pip install yt-dlp
-npm start
+node server.js   # runs on http://localhost:3001
+
+# Frontend (new terminal)
+cd frontend
+npm install
+npm start        # runs on http://localhost:3000
 ```
 
-Visit **http://localhost:3000** to use the web dashboard!
+## 📋 API Reference
 
-## 📖 Documentation
-
-- [Setup Guide](SETUP_GUIDE.md) - Complete installation instructions
-- [Architecture](docs/architecture.md) - Technical documentation
-
-## 💡 Usage Examples
-
-### Command Line
-```bash
-node src/index.js "https://youtube.com/watch?v=VIDEO_ID" 5
-```
-
-### API
-```bash
-curl -X POST http://localhost:3000/api/process \
-  -H "Content-Type: application/json" \
-  -d '{"videoUrl": "https://youtube.com/watch?v=VIDEO_ID", "clipCount": 5}'
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Health check |
+| POST | `/api/clips/analyze` | Analyze a YouTube video |
+| POST | `/api/clips/generate` | Start clip generation job |
+| GET | `/api/clips/status/:jobId` | Poll job status & progress |
+| GET | `/api/clips/download/:clipId` | Download a clip |
+| GET | `/api/clips/thumbnail/:clipId` | Get clip thumbnail |
+| GET | `/api/clips/list` | List all clips |
+| GET | `/api/videos/info?url=` | Get video metadata |
+| GET | `/api/videos/validate?url=` | Validate a YouTube URL |
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
 │          Web Dashboard (React)              │
-│              Port 3000                       │
+│  Dark Mode · Sort/Filter · Preview Modal   │
+│           Port 3000                         │
 └──────────────────┬──────────────────────────┘
-                   │
+                   │ REST API
 ┌──────────────────▼──────────────────────────┐
-│           Agent Manager                      │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐    │
-│  │ Download │ │ Analysis │ │Extraction│    │
-│  │  Agent   │ │  Agent   │ │  Agent   │    │
-│  └──────────┘ └──────────┘ └──────────┘    │
+│        Express Backend (Port 3001)           │
+│  CORS · Rate Limit · Security Headers       │
+│  clipRoutes · videoRoutes                   │
 └──────────────────┬──────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────┐
@@ -73,22 +83,13 @@ curl -X POST http://localhost:3000/api/process \
 ## 📋 Requirements
 
 - **Node.js** 18+
-- **Python** 3.x
-- **FFmpeg** (video processing)
-- **yt-dlp** (YouTube downloading)
+- **Python** 3.x (for yt-dlp)
+- **FFmpeg** – video processing
+- **yt-dlp** – YouTube downloading (`pip install yt-dlp`)
 
 ## ⚠️ Important Notes
 
-### YouTube Compliance
-- Use responsibly and respect YouTube's Terms of Service
-- Only download content you have rights to use
-
-### Bot Guard Avoidance
-The application includes several anti-detection measures:
-- ✅ Rotating user agents
-- ✅ Request rate limiting
-- ✅ Retry mechanisms
-- ✅ Proper browser headers
+Use responsibly and respect YouTube's Terms of Service. Only download content you have rights to use.
 
 ---
 
