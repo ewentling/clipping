@@ -213,7 +213,14 @@ function App() {
           <span className={`status-dot${apiOnline === false ? ' offline' : ''}`} />
           {apiOnline === null ? 'Connecting...' : apiOnline ? 'API Online' : 'API Offline'}
         </div>
-        <h1>🎬 GravityClaw</h1>
+        <h1>
+          🎬 GravityClaw
+          {clips.length > 0 && (
+            <span style={{ fontSize: '1rem', background: '#10b981', color: 'white', borderRadius: '20px', padding: '2px 10px', marginLeft: '12px', fontWeight: 600, verticalAlign: 'middle' }} aria-label={`${clips.length} clips generated`}>
+              {clips.length} clips
+            </span>
+          )}
+        </h1>
         <p>AI-Powered Viral Video Clipping - Turn long videos into shareable clips</p>
         <button
           className="dark-mode-btn"
@@ -251,10 +258,22 @@ function App() {
         </div>
         {clips.length === 0 && !isProcessing && !isLoadingClips && (
           <div className="empty-state">
-            <div className="empty-state-icon">📹</div>
-            <h3>No clips yet</h3>
-            <p>Paste a YouTube video URL above to start creating viral clips</p>
-            <p style={{ marginTop: '8px', fontSize: '0.85rem', opacity: 0.7 }}>
+            <div className="empty-state-icon">🎬</div>
+            <h3>Ready to create viral clips?</h3>
+            <p>Paste any YouTube video URL above and our AI will find the best moments</p>
+            <div style={{ marginTop: '20px', display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {[
+                { label: '🎯 AI Detection', desc: 'Finds viral moments automatically' },
+                { label: '⚡ Fast Processing', desc: '2-3 min for 10-min videos' },
+                { label: '📱 Social Ready', desc: 'TikTok, Reels & Shorts' },
+              ].map(f => (
+                <div key={f.label} style={{ background: 'rgba(255,255,255,0.12)', padding: '12px 16px', borderRadius: '10px', minWidth: '140px', backdropFilter: 'blur(4px)' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '4px' }}>{f.label}</div>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.85 }}>{f.desc}</div>
+                </div>
+              ))}
+            </div>
+            <p style={{ marginTop: '16px', fontSize: '0.82rem', opacity: 0.65 }}>
               Press <kbd style={{ background: 'rgba(255,255,255,0.2)', padding: '2px 6px', borderRadius: '4px' }}>?</kbd> for keyboard shortcuts
             </p>
           </div>

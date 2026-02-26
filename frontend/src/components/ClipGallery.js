@@ -81,6 +81,11 @@ function ClipGallery({ clips, onDownload }) {
     }
   };
 
+  const handleShareTwitter = (clip) => {
+    const text = encodeURIComponent(`Check out this viral clip: ${clip.title || 'Viral Clip'} `);
+    window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="card">
       {previewClip && (
@@ -200,6 +205,14 @@ function ClipGallery({ clips, onDownload }) {
                     aria-label="Copy download link to clipboard"
                   >
                     📋 Copy Link
+                  </button>
+                  <button
+                    className="btn-share"
+                    style={{ background: '#1da1f2', color: 'white' }}
+                    onClick={() => handleShareTwitter(clip)}
+                    aria-label="Share to Twitter/X"
+                  >
+                    🐦 Tweet
                   </button>
                 </div>
               </div>
