@@ -1,0 +1,32 @@
+{
+  "name": "gravity-claw-clipping",
+  "version": "1.0.0",
+  "description": "SAAS application for creating viral video clips from YouTube videos",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "node tests/test.js",
+    "agent:coordinator": "node src/agents/coordinator.js",
+    "agent:downloader": "node src/agents/downloader.js",
+    "agent:analyzer": "node src/agents/analyzer.js",
+    "agent:clipper": "node src/agents/clipper.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ytdl-core": "^4.11.5",
+    "fluent-ffmpeg": "^2.1.2",
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12",
+    "multer": "^1.4.5-lts.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0",
+    "uuid": "^9.0.0",
+    "sharp": "^0.33.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
