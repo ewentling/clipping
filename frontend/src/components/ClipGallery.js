@@ -114,20 +114,21 @@ function ClipGallery({ clips, onDownload }) {
     if (navigator.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(text);
-        return true;
+        return 'success';
       } catch (err) {
-        if (err?.name === 'NotAllowedError') return false;
-        return fallbackCopy(text);
+        if (err?.name === 'NotAllowedError') return 'denied';
+        return fallbackCopy(text) ? 'success' : 'failed';
       }
     }
-    return fallbackCopy(text);
+    return fallbackCopy(text) ? 'success' : 'failed';
   };
 
   const handleCopyLink = async (clipId) => {
     const url = `${API_BASE_URL}${endpoints.download(clipId)}`;
     const copied = await copyText(url);
-    if (copied) toast.success('Link copied to clipboard!');
-    else toast.error('Clipboard permission blocked');
+    if (copied === 'success') toast.success('Link copied to clipboard!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy link');
   };
 
   const handleShareTwitter = (clip) => {
@@ -144,8 +145,9 @@ function ClipGallery({ clips, onDownload }) {
     const title = localTitles[clip.clipId] || clip.title || 'Viral Clip';
     const caption = `${title}\n\n${CAPTION_HASHTAGS}`;
     const copied = await copyText(caption);
-    if (copied) toast.success('Caption copied!');
-    else toast.error('Clipboard permission blocked');
+    if (copied === 'success') toast.success('Caption copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy caption');
   };
 
   const startEditTitle = (clip) => {
@@ -301,12 +303,13 @@ function ClipGallery({ clips, onDownload }) {
                         autoFocus
                         aria-label={`Edit clip title (max ${TITLE_LIMIT} characters)`}
                         aria-describedby={`title-count-${clip.clipId}`}
+                        aria-invalid={editTitleValue.length >= TITLE_LIMIT}
                         style={{ flex: 1, padding: '4px 8px', border: '1px solid #667eea', borderRadius: '4px', fontSize: '0.9rem', background: 'var(--input-bg)', color: 'var(--text-primary)' }}
                       />
                       <button onClick={() => saveTitle(clip.clipId)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: '#667eea', color: 'white', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Save title">✓</button>
                       <button onClick={() => setEditingTitle(null)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: 'var(--btn-secondary-bg)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Cancel edit">✕</button>
                     </div>
-                    <div id={`title-count-${clip.clipId}`} className="title-counter">
+                    <div id={`title-count-${clip.clipId}`} className="title-counter" aria-live="polite">
                       {editTitleValue.length}/{TITLE_LIMIT} characters
                     </div>
                   </div>

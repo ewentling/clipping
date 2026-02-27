@@ -6,7 +6,7 @@ const MILLISECONDS_PER_SECOND = 1000;
 function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   const [progress, setProgress] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const startTimeRef = useRef(Date.now());
+  const startTimeRef = useRef(performance.now());
 
   const steps = [
     { name: 'Analyzing', threshold: 10, description: "We're analyzing the video structure and identifying potential viral moments using AI." },
@@ -25,9 +25,9 @@ function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   }, [statusMessage]);
 
   useEffect(() => {
-    startTimeRef.current = Date.now();
+    startTimeRef.current = performance.now();
     const timer = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTimeRef.current) / MILLISECONDS_PER_SECOND);
+      const elapsed = Math.floor((performance.now() - startTimeRef.current) / MILLISECONDS_PER_SECOND);
       setElapsedSeconds(elapsed);
     }, MILLISECONDS_PER_SECOND);
     return () => clearInterval(timer);
