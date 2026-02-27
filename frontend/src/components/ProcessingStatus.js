@@ -21,11 +21,12 @@ function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   }, [statusMessage]);
 
   useEffect(() => {
+    setElapsedSeconds(0);
     const timer = setInterval(() => {
       setElapsedSeconds(s => s + 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [jobId]);
 
   const formatElapsed = (seconds) => {
     const mins = Math.floor(seconds / 60);

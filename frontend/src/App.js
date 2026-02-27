@@ -44,7 +44,8 @@ function App() {
       if (e.key === '?' && !e.target.matches('input, textarea, select')) {
         setShowHelp(prev => !prev);
       }
-      if (e.key.toLowerCase() === 'd' && !e.target.matches('input, textarea, select') && clips.length > 0) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && !e.target.matches('input, textarea, select') && clips.length > 0) {
+        e.preventDefault();
         document.querySelector('[data-action="download-all"]')?.click();
       }
       if (e.key === 'Escape') {
@@ -372,7 +373,7 @@ function App() {
               <span className="shortcut-desc">Play/Pause video preview</span>
             </div>
             <div className="shortcut-row">
-              <span className="shortcut-key">D</span>
+              <span className="shortcut-key">Ctrl/⌘ + D</span>
               <span className="shortcut-desc">Download all clips</span>
             </div>
             <div style={{ marginTop: '20px', textAlign: 'right' }}>

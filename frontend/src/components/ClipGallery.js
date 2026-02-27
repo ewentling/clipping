@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { API_BASE_URL, endpoints } from '../config';
+import { API_BASE_URL, CAPTION_HASHTAGS, endpoints } from '../config';
 import PreviewModal from './PreviewModal';
 
-const CAPTION_HASHTAGS = '#Clipnotic #ViralClips #Shorts';
+const TITLE_LIMIT = 150;
 
 function ClipGallery({ clips, onDownload }) {
   const [previewClip, setPreviewClip] = useState(null);
@@ -168,7 +168,6 @@ function ClipGallery({ clips, onDownload }) {
   const getDisplayTitle = (clip, index) =>
     localTitles[clip.clipId] || clip.title || `Viral Clip #${index + 1}`;
 
-  const titleLimit = 150;
   const isFiltered = filterType !== 'all' || sortBy !== 'score';
   const resetFilters = () => {
     setFilterType('all');
@@ -272,7 +271,7 @@ function ClipGallery({ clips, onDownload }) {
                       <input
                         type="text"
                         value={editTitleValue}
-                        maxLength={titleLimit}
+                        maxLength={TITLE_LIMIT}
                         onChange={e => setEditTitleValue(e.target.value)}
                         onFocus={(e) => e.target.select()}
                         onKeyDown={e => {
@@ -280,7 +279,7 @@ function ClipGallery({ clips, onDownload }) {
                           if (e.key === 'Escape') setEditingTitle(null);
                         }}
                         autoFocus
-                        aria-label="Edit clip title (max 150 characters)"
+                        aria-label={`Edit clip title (max ${TITLE_LIMIT} characters)`}
                         aria-describedby={`title-count-${clip.clipId}`}
                         style={{ flex: 1, padding: '4px 8px', border: '1px solid #667eea', borderRadius: '4px', fontSize: '0.9rem', background: 'var(--input-bg)', color: 'var(--text-primary)' }}
                       />
@@ -288,7 +287,7 @@ function ClipGallery({ clips, onDownload }) {
                       <button onClick={() => setEditingTitle(null)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: 'var(--btn-secondary-bg)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Cancel edit">✕</button>
                     </div>
                     <div id={`title-count-${clip.clipId}`} className="title-counter">
-                      {editTitleValue.length}/{titleLimit} characters
+                      {editTitleValue.length}/{TITLE_LIMIT} characters
                     </div>
                   </div>
                 ) : (
