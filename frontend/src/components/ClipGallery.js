@@ -116,6 +116,12 @@ function ClipGallery({ clips, onDownload }) {
   const getDisplayTitle = (clip, index) =>
     localTitles[clip.clipId] || clip.title || `Viral Clip #${index + 1}`;
 
+  const isFiltered = filterType !== 'all' || sortBy !== 'score';
+  const resetFilters = () => {
+    setFilterType('all');
+    setSortBy('score');
+  };
+
   return (
     <div className="card">
       {previewClip && (
@@ -169,9 +175,16 @@ function ClipGallery({ clips, onDownload }) {
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
-        {filterType !== 'all' && (
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+        {(filterType !== 'all' || sortBy !== 'score') && (
+          <span className="filter-status">
             Showing {sortedFilteredClips.length} of {clips.length}
+            {filterType !== 'all' && ` • Filtered by ${filterType}`}
+            {sortBy !== 'score' && ` • Sorted by ${sortBy === 'duration' ? 'duration' : 'original'}`}
+            {isFiltered && (
+              <button type="button" className="btn-link" onClick={resetFilters}>
+                Reset
+              </button>
+            )}
           </span>
         )}
       </div>
@@ -203,6 +216,7 @@ function ClipGallery({ clips, onDownload }) {
                       type="text"
                       value={editTitleValue}
                       onChange={e => setEditTitleValue(e.target.value)}
+                      onFocus={(e) => e.target.select()}
                       onKeyDown={e => {
                         if (e.key === 'Enter') saveTitle(clip.clipId);
                         if (e.key === 'Escape') setEditingTitle(null);

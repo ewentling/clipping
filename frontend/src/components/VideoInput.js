@@ -99,6 +99,29 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
     localStorage.setItem(RECENT_URLS_KEY, JSON.stringify(updated));
   };
 
+  const trimmedUrl = videoUrl.trim();
+  const urlLength = videoUrl.length;
+  const isUrlReady = trimmedUrl.length >= 10;
+  const isUrlValid = isUrlReady && validateYouTubeUrl(trimmedUrl);
+  const validationState = !trimmedUrl ? 'empty' : isUrlValid ? 'valid' : isUrlReady ? 'invalid' : 'typing';
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setVideoUrl(text);
+        setValidationError(null);
+      }
+    } catch {
+      setValidationError('Clipboard access is blocked');
+    }
+  };
+
+  const handleClear = () => {
+    setVideoUrl('');
+    setValidationError(null);
+  };
+
   return (
     <div className="card">
       <h2 className="card-title">
@@ -140,6 +163,24 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
               {isValidating
                 ? <><span className="loading-spinner" aria-hidden="true" />Analyzing...</>
                 : <><span aria-hidden="true">🔍</span>Analyze</>}
+            </button>
+          </div>
+          <div className="url-meta" aria-live="polite">
+            <span className={`url-status ${validationState}`} aria-label="URL validation status">
+              {validationState === 'valid' && '✅ Looks good'}
+              {validationState === 'typing' && '✏️ Still typing...'}
+              {validationState === 'invalid' && '❌ Invalid URL'}
+            </span>
+            <span className="url-count" aria-label={`URL length ${urlLength} characters`}>
+              {urlLength} chars
+            </span>
+          </div>
+          <div className="input-actions">
+            <button type="button" className="btn btn-secondary" onClick={handlePaste} disabled={isProcessing}>
+              📋 Paste
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={handleClear} disabled={isProcessing || !videoUrl}>
+              🧹 Clear
             </button>
           </div>
           {validationError && (
@@ -236,6 +277,14 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
                 <option value={7}>7 clips</option>
                 <option value={10}>10 clips</option>
               </select>
+            </div>
+            <div className="clip-helper">
+              <div className="clip-count-preview" aria-label={`Preview for ${numClips} clips`}>
+                {Array.from({ length: numClips }).map((_, i) => (
+                  <span key={i} className="clip-count-dot" />
+                ))}
+              </div>
+              <span className="clip-helper-text">Recommended: 5 clips for most videos</span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px', marginTop: '20px', flexWrap: 'wrap' }}>

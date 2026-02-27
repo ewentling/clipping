@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function ProcessingStatus({ jobId, statusMessage, onCancel }) {
+function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   const [progress, setProgress] = useState(0);
 
   const steps = [
@@ -89,6 +89,13 @@ function ProcessingStatus({ jobId, statusMessage, onCancel }) {
         <div style={{ marginTop: '16px', textAlign: 'center' }}>
           <button className="btn btn-secondary" onClick={onCancel} aria-label="Cancel processing">
             ✕ Cancel Processing
+          </button>
+        </div>
+      )}
+      {onJumpToGallery && progress >= 50 && (
+        <div style={{ marginTop: '10px', textAlign: 'center' }}>
+          <button className="btn btn-secondary" onClick={onJumpToGallery} aria-label="Jump to clip gallery">
+            👀 Jump to Gallery
           </button>
         </div>
       )}

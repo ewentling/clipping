@@ -288,7 +288,12 @@ function App() {
           onClear={handleClearClips}
         />
         {currentJob && (
-          <ProcessingStatus jobId={currentJob.id} statusMessage={statusMessage} onCancel={handleCancel} />
+          <ProcessingStatus
+            jobId={currentJob.id}
+            statusMessage={statusMessage}
+            onCancel={handleCancel}
+            onJumpToGallery={() => clipsRef.current?.scrollIntoView({ behavior: 'smooth' })}
+          />
         )}
         <div ref={clipsRef}>
           {isLoadingClips && <ClipSkeleton count={3} />}

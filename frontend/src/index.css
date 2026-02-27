@@ -211,6 +211,42 @@ body {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
 }
 
+.url-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 4px 0 12px;
+}
+
+.url-status {
+  font-weight: 600;
+}
+
+.url-status.valid {
+  color: #10b981;
+}
+
+.url-status.typing {
+  color: #f59e0b;
+}
+
+.url-status.invalid {
+  color: #ef4444;
+}
+
+.url-count {
+  opacity: 0.7;
+}
+
+.input-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
 .btn {
   padding: 15px 30px;
   border: none;
@@ -319,6 +355,29 @@ body {
   cursor: pointer;
 }
 
+.clip-helper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+.clip-count-preview {
+  display: flex;
+  gap: 4px;
+}
+
+.clip-count-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #667eea;
+  opacity: 0.8;
+}
+
 .clips-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -362,6 +421,27 @@ body {
   font-size: 0.85rem;
   color: var(--text-secondary);
   margin-bottom: 12px;
+}
+
+.filter-status {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #667eea;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
 }
 
 .clip-score {
