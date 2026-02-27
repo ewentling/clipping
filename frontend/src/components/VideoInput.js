@@ -169,7 +169,7 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
             <label htmlFor="video-url-input" className="sr-only">YouTube URL</label>
             <input
               id="video-url-input"
-              type="url"
+              type="text"
               inputMode="url"
               placeholder="Paste YouTube URL (e.g., https://youtube.com/watch?v=...)"
               value={videoUrl}

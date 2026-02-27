@@ -25,6 +25,7 @@ function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   }, [statusMessage]);
 
   useEffect(() => {
+    setElapsedSeconds(0);
     startTimeRef.current = performance.now();
     const timer = setInterval(() => {
       const elapsed = Math.floor((performance.now() - startTimeRef.current) / MILLISECONDS_PER_SECOND);
@@ -112,8 +113,8 @@ function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
 
       {onCancel && (
         <div style={{ marginTop: '16px', textAlign: 'center' }}>
-          <button className="btn btn-secondary" onClick={onCancel} aria-label="Cancel processing">
-            ✕ Cancel Processing
+          <button className="btn btn-secondary" onClick={onCancel} aria-label="Stop processing status updates">
+            ✕ Stop Status Updates
           </button>
         </div>
       )}

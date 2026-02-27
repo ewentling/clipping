@@ -303,7 +303,6 @@ function ClipGallery({ clips, onDownload }) {
                         autoFocus
                         aria-label={`Edit clip title (max ${TITLE_LIMIT} characters)`}
                         aria-describedby={`title-count-${clip.clipId}`}
-                        aria-invalid={editTitleValue.length >= TITLE_LIMIT}
                         style={{ flex: 1, padding: '4px 8px', border: '1px solid #667eea', borderRadius: '4px', fontSize: '0.9rem', background: 'var(--input-bg)', color: 'var(--text-primary)' }}
                       />
                       <button onClick={() => saveTitle(clip.clipId)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: '#667eea', color: 'white', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Save title">✓</button>
@@ -347,6 +346,8 @@ function ClipGallery({ clips, onDownload }) {
                     style={{ background: getViralScoreColor(clip.score || 0) }}
                     aria-label={`Viral score: ${((clip.score || 0) * 100).toFixed(0)}%`}
                     data-tooltip={getScoreTooltip(clip.score || 0)}
+                    tabIndex={0}
+                    title={getScoreTooltip(clip.score || 0)}
                   >
                     {((clip.score || 0) * 100).toFixed(0)}% Viral
                   </span>

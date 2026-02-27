@@ -210,7 +210,7 @@ function App() {
     setCurrentJob(null);
     setIsProcessing(false);
     setStatusMessage('');
-    toast('Video processing cancelled.');
+    toast('Stopped status updates. Processing continues in the background.');
   };
 
   const handleClearClips = () => {
