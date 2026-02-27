@@ -6,12 +6,13 @@ const YOUTUBE_VIDEO_ID_LENGTH = 11;
 const THREE_MINUTES = 180;
 const TEN_MINUTES = 600;
 const TWENTY_MINUTES = 1200;
+const DEFAULT_RECOMMENDED_CLIPS = 5;
 
 function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, onRecentUpdate }) {
   const [videoUrl, setVideoUrl] = useState('');
   const [numClips, setNumClips] = useState(() => {
     const saved = localStorage.getItem('preferredNumClips');
-    return saved ? parseInt(saved, 10) : 5;
+    return saved ? parseInt(saved, 10) : DEFAULT_RECOMMENDED_CLIPS;
   });
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState(null);
@@ -331,7 +332,7 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
                 ))}
               </div>
               <span className="clip-helper-text">
-                {recommendedClips ? `Recommended: ${recommendedClips} clips for this video` : 'Recommended: 5 clips for most videos'}
+                {recommendedClips ? `Recommended: ${recommendedClips} clips for this video` : `Recommended: ${DEFAULT_RECOMMENDED_CLIPS} clips for most videos`}
               </span>
               {recommendedClips && recommendedClips !== numClips && (
                 <button type="button" className="btn-link" onClick={() => setNumClips(recommendedClips)}>

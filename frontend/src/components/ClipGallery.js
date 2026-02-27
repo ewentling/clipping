@@ -116,7 +116,7 @@ function ClipGallery({ clips, onDownload }) {
         await navigator.clipboard.writeText(text);
         return true;
       } catch (err) {
-        if (err && err.name === 'NotAllowedError') return false;
+        if (err?.name === 'NotAllowedError') return false;
         return fallbackCopy(text);
       }
     }
@@ -199,7 +199,7 @@ function ClipGallery({ clips, onDownload }) {
           {batchProgress && (
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               Downloading {batchProgress.done}/{batchProgress.total}
-              {batchProgress.currentClip ? ` • ${batchProgress.currentClip}` : ''}...
+              {batchProgress.currentClip ? ` • ${batchProgress.currentClip}...` : '...'}
             </span>
           )}
           <button
