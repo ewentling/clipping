@@ -10,6 +10,7 @@ function ClipGallery({ clips, onDownload }) {
   const [previewClip, setPreviewClip] = useState(null);
   const [sortBy, setSortBy] = useState('score');
   const [filterType, setFilterType] = useState('all');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [editingTitle, setEditingTitle] = useState(null); // clipId being edited
   const [editTitleValue, setEditTitleValue] = useState('');
   const [localTitles, setLocalTitles] = useState({});
@@ -28,9 +29,10 @@ function ClipGallery({ clips, onDownload }) {
 
   const sortedFilteredClips = useMemo(() => {
     let result = [...clips];
-    if (filterType === 'favorites') {
+    if (showFavoritesOnly) {
       result = result.filter(c => favorites[c.clipId]);
-    } else if (filterType !== 'all') {
+    }
+    if (filterType !== 'all') {
       result = result.filter(c => (c.type || 'clip') === filterType);
     }
     if (sortBy === 'score') {
@@ -39,7 +41,7 @@ function ClipGallery({ clips, onDownload }) {
       result.sort((a, b) => (parseFloat(a.duration) || 0) - (parseFloat(b.duration) || 0));
     }
     return result;
-  }, [clips, sortBy, filterType, favorites]);
+  }, [clips, sortBy, filterType, favorites, showFavoritesOnly]);
 
   const uniqueTypes = useMemo(() => {
     return [...new Set(clips.map(c => c.type || 'clip'))];
@@ -90,22 +92,37 @@ function ClipGallery({ clips, onDownload }) {
     return 'Exploratory pick';
   };
 
+  const fallbackCopy = (text) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  };
+
+  const copyText = async (text) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (err) {
+        if (err?.name === 'NotAllowedError') return false;
+        fallbackCopy(text);
+        return true;
+      }
+    }
+    fallbackCopy(text);
+    return true;
+  };
+
   const handleCopyLink = async (clipId) => {
     const url = `${API_BASE_URL}${endpoints.download(clipId)}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success('Link copied to clipboard!');
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = url;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      toast.success('Link copied!');
-    }
+    const copied = await copyText(url);
+    if (copied) toast.success('Link copied to clipboard!');
+    else toast.error('Clipboard permission blocked');
   };
 
   const handleShareTwitter = (clip) => {
@@ -121,20 +138,9 @@ function ClipGallery({ clips, onDownload }) {
   const handleCopyCaption = async (clip) => {
     const title = localTitles[clip.clipId] || clip.title || 'Viral Clip';
     const caption = `${title}\n\n${CAPTION_HASHTAGS}`;
-    try {
-      await navigator.clipboard.writeText(caption);
-      toast.success('Caption copied!');
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = caption;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      toast.success('Caption copied!');
-    }
+    const copied = await copyText(caption);
+    if (copied) toast.success('Caption copied!');
+    else toast.error('Clipboard permission blocked');
   };
 
   const startEditTitle = (clip) => {
@@ -168,10 +174,11 @@ function ClipGallery({ clips, onDownload }) {
   const getDisplayTitle = (clip, index) =>
     localTitles[clip.clipId] || clip.title || `Viral Clip #${index + 1}`;
 
-  const isFiltered = filterType !== 'all' || sortBy !== 'score';
+  const isFiltered = filterType !== 'all' || sortBy !== 'score' || showFavoritesOnly;
   const resetFilters = () => {
     setFilterType('all');
     setSortBy('score');
+    setShowFavoritesOnly(false);
   };
 
   return (
@@ -225,15 +232,23 @@ function ClipGallery({ clips, onDownload }) {
           aria-label="Filter clips by type"
         >
           <option value="all">All Types</option>
-          <option value="favorites">⭐ Favorites</option>
           {uniqueTypes.map(t => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
+        <label className="favorite-toggle">
+          <input
+            type="checkbox"
+            checked={showFavoritesOnly}
+            onChange={(e) => setShowFavoritesOnly(e.target.checked)}
+          />
+          ⭐ Favorites
+        </label>
         {(filterType !== 'all' || sortBy !== 'score') && (
           <span className="filter-status">
             Showing {sortedFilteredClips.length} of {clips.length}
-            {filterType !== 'all' && ` • Filtered by ${filterType === 'favorites' ? 'favorites' : filterType}`}
+            {filterType !== 'all' && ` • Filtered by ${filterType}`}
+            {showFavoritesOnly && ' • Favorites only'}
             {sortBy !== 'score' && ` • Sorted by ${sortBy === 'duration' ? 'duration' : 'original'}`}
             {isFiltered && (
               <button type="button" className="btn-link" onClick={resetFilters}>

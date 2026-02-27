@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   const [progress, setProgress] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const startTimeRef = useRef(Date.now());
 
   const steps = [
     { name: 'Analyzing', threshold: 10, description: "We're analyzing the video structure and identifying potential viral moments using AI." },
@@ -21,9 +22,10 @@ function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   }, [statusMessage]);
 
   useEffect(() => {
-    setElapsedSeconds(0);
+    startTimeRef.current = Date.now();
     const timer = setInterval(() => {
-      setElapsedSeconds(s => s + 1);
+      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      setElapsedSeconds(elapsed);
     }, 1000);
     return () => clearInterval(timer);
   }, [jobId]);

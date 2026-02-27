@@ -801,6 +801,19 @@ body {
   cursor: pointer;
 }
 
+.favorite-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.favorite-toggle input {
+  accent-color: #f59e0b;
+}
+
 /* Share buttons */
 .share-buttons {
   display: flex;

@@ -113,15 +113,13 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
     onRecentUpdate?.(0);
   };
 
-  const recommendedClips = videoInfo?.duration
-    ? videoInfo.duration <= 180
-      ? 3
-      : videoInfo.duration <= 600
-        ? 5
-        : videoInfo.duration <= 1200
-          ? 7
-          : 10
-    : null;
+  const getRecommendedClips = (duration) => {
+    if (duration <= 180) return 3;
+    if (duration <= 600) return 5;
+    if (duration <= 1200) return 7;
+    return 10;
+  };
+  const recommendedClips = videoInfo?.duration ? getRecommendedClips(videoInfo.duration) : null;
   const showClipWarning = recommendedClips && numClips > recommendedClips;
 
   const trimmedUrl = videoUrl.trim();
