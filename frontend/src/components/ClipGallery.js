@@ -347,7 +347,6 @@ function ClipGallery({ clips, onDownload }) {
                     aria-label={`Viral score: ${((clip.score || 0) * 100).toFixed(0)}%`}
                     data-tooltip={getScoreTooltip(clip.score || 0)}
                     tabIndex={0}
-                    title={getScoreTooltip(clip.score || 0)}
                   >
                     {((clip.score || 0) * 100).toFixed(0)}% Viral
                   </span>
