@@ -4,6 +4,8 @@ import { toast } from 'react-hot-toast';
 import { API_BASE_URL, endpoints } from '../config';
 import PreviewModal from './PreviewModal';
 
+const CAPTION_HASHTAGS = '#Clipnotic #ViralClips #Shorts';
+
 function ClipGallery({ clips, onDownload }) {
   const [previewClip, setPreviewClip] = useState(null);
   const [sortBy, setSortBy] = useState('score');
@@ -118,7 +120,7 @@ function ClipGallery({ clips, onDownload }) {
 
   const handleCopyCaption = async (clip) => {
     const title = localTitles[clip.clipId] || clip.title || 'Viral Clip';
-    const caption = `${title}\n\n#Clipnotic #ViralClips #Shorts`;
+    const caption = `${title}\n\n${CAPTION_HASHTAGS}`;
     try {
       await navigator.clipboard.writeText(caption);
       toast.success('Caption copied!');
