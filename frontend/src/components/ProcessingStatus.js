@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   const [progress, setProgress] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const steps = [
     { name: 'Analyzing', threshold: 10, description: "We're analyzing the video structure and identifying potential viral moments using AI." },
@@ -18,6 +19,19 @@ function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
       else if (statusMessage.toLowerCase().includes('completed')) setProgress(100);
     }
   }, [statusMessage]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setElapsedSeconds(s => s + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatElapsed = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  };
 
   const activeStep = steps.findIndex(s => progress <= s.threshold);
   const currentStep = activeStep === -1 ? steps.length - 1 : activeStep;
@@ -45,7 +59,7 @@ function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
         <div className="status-text">{statusMessage || 'Starting...'}</div>
         <div className="status-meta">
           Step {currentStep + 1} of {steps.length}: {steps[currentStep]?.name}
-          {nextStep && ` • Next: ${nextStep.name}`}
+          {nextStep && ` • Next: ${nextStep.name}`} • Elapsed: {formatElapsed(elapsedSeconds)}
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 const RECENT_URLS_KEY = 'recentVideoUrls';
 const MAX_RECENT = 5;
@@ -11,6 +11,7 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
   });
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState(null);
+  const [showRecent, setShowRecent] = useState(true);
   const [recentUrls, setRecentUrls] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(RECENT_URLS_KEY) || '[]');
@@ -18,11 +19,16 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
       return [];
     }
   });
+  const inputRef = useRef(null);
 
   // Persist preferred clip count
   useEffect(() => {
     localStorage.setItem('preferredNumClips', numClips);
   }, [numClips]);
+
+  useEffect(() => {
+    if (!videoInfo) inputRef.current?.focus();
+  }, [videoInfo]);
 
   const validateYouTubeUrl = (url) => {
     const patterns = [
@@ -99,6 +105,11 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
     localStorage.setItem(RECENT_URLS_KEY, JSON.stringify(updated));
   };
 
+  const clearRecentUrls = () => {
+    setRecentUrls([]);
+    localStorage.setItem(RECENT_URLS_KEY, JSON.stringify([]));
+  };
+
   const recommendedClips = videoInfo?.duration
     ? videoInfo.duration <= 180
       ? 3
@@ -159,6 +170,7 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
                 setVideoUrl(e.target.value);
                 if (validationError) setValidationError(null);
               }}
+              ref={inputRef}
               disabled={isProcessing}
               aria-invalid={!!validationError}
               aria-describedby={validationError ? 'url-error' : undefined}
@@ -210,8 +222,18 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
           {/* Recent URLs */}
           {recentUrls.length > 0 && (
             <div className="recent-urls" aria-label="Recently used URLs">
-              <h5>🕐 Recent</h5>
-              {recentUrls.map(url => (
+              <div className="recent-header">
+                <h5>🕐 Recent</h5>
+                <div className="recent-actions">
+                  <button type="button" className="btn-link" onClick={() => setShowRecent(s => !s)}>
+                    {showRecent ? 'Hide' : 'Show'}
+                  </button>
+                  <button type="button" className="btn-link" onClick={clearRecentUrls}>
+                    Clear All
+                  </button>
+                </div>
+              </div>
+              {showRecent && recentUrls.map(url => (
                 <div
                   key={url}
                   className="recent-url-item"

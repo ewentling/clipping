@@ -810,6 +810,18 @@ body {
   font-weight: 600;
 }
 
+.recent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.recent-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .recent-url-item {
   display: flex;
   align-items: center;
@@ -836,6 +848,21 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-right: 8px;
+}
+
+.clip-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.btn-favorite {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #f59e0b;
 }
 
 /* Confirm dialog overlay */

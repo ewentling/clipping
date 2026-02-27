@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { API_BASE_URL, endpoints } from '../config';
@@ -12,10 +12,23 @@ function ClipGallery({ clips, onDownload }) {
   const [editTitleValue, setEditTitleValue] = useState('');
   const [localTitles, setLocalTitles] = useState({});
   const [batchProgress, setBatchProgress] = useState(null); // { done, total }
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('clipFavorites') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('clipFavorites', JSON.stringify(favorites));
+  }, [favorites]);
 
   const sortedFilteredClips = useMemo(() => {
     let result = [...clips];
-    if (filterType !== 'all') {
+    if (filterType === 'favorites') {
+      result = result.filter(c => favorites[c.clipId]);
+    } else if (filterType !== 'all') {
       result = result.filter(c => (c.type || 'clip') === filterType);
     }
     if (sortBy === 'score') {
@@ -24,7 +37,7 @@ function ClipGallery({ clips, onDownload }) {
       result.sort((a, b) => (parseFloat(a.duration) || 0) - (parseFloat(b.duration) || 0));
     }
     return result;
-  }, [clips, sortBy, filterType]);
+  }, [clips, sortBy, filterType, favorites]);
 
   const uniqueTypes = useMemo(() => {
     return [...new Set(clips.map(c => c.type || 'clip'))];
@@ -91,6 +104,10 @@ function ClipGallery({ clips, onDownload }) {
     const title = localTitles[clip.clipId] || clip.title || 'Viral Clip';
     const text = encodeURIComponent(`Check out this viral clip: ${title} `);
     window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const toggleFavorite = (clipId) => {
+    setFavorites(prev => ({ ...prev, [clipId]: !prev[clipId] }));
   };
 
   const handleCopyCaption = async (clip) => {
@@ -196,6 +213,7 @@ function ClipGallery({ clips, onDownload }) {
           aria-label="Filter clips by type"
         >
           <option value="all">All Types</option>
+          <option value="favorites">⭐ Favorites</option>
           {uniqueTypes.map(t => (
             <option key={t} value={t}>{t}</option>
           ))}
@@ -203,7 +221,7 @@ function ClipGallery({ clips, onDownload }) {
         {(filterType !== 'all' || sortBy !== 'score') && (
           <span className="filter-status">
             Showing {sortedFilteredClips.length} of {clips.length}
-            {filterType !== 'all' && ` • Filtered by ${filterType}`}
+            {filterType !== 'all' && ` • Filtered by ${filterType === 'favorites' ? 'favorites' : filterType}`}
             {sortBy !== 'score' && ` • Sorted by ${sortBy === 'duration' ? 'duration' : 'original'}`}
             {isFiltered && (
               <button type="button" className="btn-link" onClick={resetFilters}>
@@ -254,18 +272,29 @@ function ClipGallery({ clips, onDownload }) {
                     <button onClick={() => setEditingTitle(null)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: 'var(--btn-secondary-bg)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Cancel edit">✕</button>
                   </div>
                 ) : (
-                  <h4
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                    onClick={() => startEditTitle(clip)}
-                    title="Click to edit title"
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={e => e.key === 'Enter' && startEditTitle(clip)}
-                    aria-label={`Edit title: ${getDisplayTitle(clip, index)}`}
-                  >
-                    {getDisplayTitle(clip, index)}
-                    <span style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 400 }}>✏️</span>
-                  </h4>
+                  <div className="clip-title-row">
+                    <h4
+                      style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      onClick={() => startEditTitle(clip)}
+                      title="Click to edit title"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={e => e.key === 'Enter' && startEditTitle(clip)}
+                      aria-label={`Edit title: ${getDisplayTitle(clip, index)}`}
+                    >
+                      {getDisplayTitle(clip, index)}
+                      <span style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 400 }}>✏️</span>
+                    </h4>
+                    <button
+                      type="button"
+                      className="btn-favorite"
+                      onClick={() => toggleFavorite(clip.clipId)}
+                      aria-label={favorites[clip.clipId] ? 'Remove from favorites' : 'Add to favorites'}
+                      aria-pressed={!!favorites[clip.clipId]}
+                    >
+                      {favorites[clip.clipId] ? '⭐' : '☆'}
+                    </button>
+                  </div>
                 )}
                 <div className="clip-meta">
                   <span aria-label={`Type: ${clip.type || 'clip'}, Duration: ${formatDuration(clip.duration)}`}>
