@@ -22,6 +22,13 @@ function App() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [retryFn, setRetryFn] = useState(null);
+  const [recentUrlCount, setRecentUrlCount] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('recentVideoUrls') || '[]').length;
+    } catch {
+      return 0;
+    }
+  });
   const pollRef = useRef(null);
   const clipsRef = useRef(null);
 
@@ -286,6 +293,7 @@ function App() {
           videoInfo={videoInfo}
           isProcessing={isProcessing}
           onClear={handleClearClips}
+          onRecentUpdate={setRecentUrlCount}
         />
         {currentJob && (
           <ProcessingStatus
@@ -305,7 +313,11 @@ function App() {
           <div className="empty-state">
             <div className="empty-state-icon">🎬</div>
             <h3>Ready to create viral clips?</h3>
-            <p>Paste any YouTube video URL above and our AI will find the best moments</p>
+            {recentUrlCount > 0 ? (
+              <p>You have {recentUrlCount} recent video{recentUrlCount !== 1 ? 's' : ''}. Pick one above to generate clips in a few minutes.</p>
+            ) : (
+              <p>Paste any YouTube video URL above and our AI will find the best moments</p>
+            )}
             <div style={{ marginTop: '20px', display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               {[
                 { label: '🎯 AI Detection', desc: 'Finds viral moments automatically' },

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 const RECENT_URLS_KEY = 'recentVideoUrls';
 const MAX_RECENT = 5;
 
-function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) {
+function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, onRecentUpdate }) {
   const [videoUrl, setVideoUrl] = useState('');
   const [numClips, setNumClips] = useState(() => {
     const saved = localStorage.getItem('preferredNumClips');
@@ -42,7 +42,8 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
     const updated = [url, ...recentUrls.filter(u => u !== url)].slice(0, MAX_RECENT);
     setRecentUrls(updated);
     localStorage.setItem(RECENT_URLS_KEY, JSON.stringify(updated));
-  }, [recentUrls]);
+    onRecentUpdate?.(updated.length);
+  }, [recentUrls, onRecentUpdate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -103,11 +104,13 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
     const updated = recentUrls.filter(u => u !== url);
     setRecentUrls(updated);
     localStorage.setItem(RECENT_URLS_KEY, JSON.stringify(updated));
+    onRecentUpdate?.(updated.length);
   };
 
   const clearRecentUrls = () => {
     setRecentUrls([]);
     localStorage.setItem(RECENT_URLS_KEY, JSON.stringify([]));
+    onRecentUpdate?.(0);
   };
 
   const recommendedClips = videoInfo?.duration
@@ -119,6 +122,7 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
           ? 7
           : 10
     : null;
+  const showClipWarning = recommendedClips && numClips > recommendedClips;
 
   const trimmedUrl = videoUrl.trim();
   const urlLength = videoUrl.length;
@@ -189,10 +193,11 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
             </button>
           </div>
           <datalist id="youtube-suggestions">
-            <option value="https://www.youtube.com/watch?v=" />
-            <option value="https://youtu.be/" />
-            <option value="https://www.youtube.com/shorts/" />
-            <option value="https://www.youtube.com/playlist?list=" />
+            <option value="https://www.youtube.com/watch?v=" label="Full URL" />
+            <option value="https://youtu.be/" label="Short link" />
+            <option value="https://www.youtube.com/shorts/" label="Shorts" />
+            <option value="https://www.youtube.com/playlist?list=" label="Playlist" />
+            <option value="dQw4w9WgXcQ" label="Video ID (11 chars)" />
           </datalist>
           <div className="url-meta" aria-live="polite">
             <span className={`url-status ${validationState}`} aria-label="URL validation status">
@@ -332,6 +337,11 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
                 </button>
               )}
             </div>
+            {showClipWarning && (
+              <div className="clip-warning" role="note">
+                ⚠️ Higher clip counts can take longer to process. Recommended: {recommendedClips} clips.
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', gap: '10px', marginTop: '20px', flexWrap: 'wrap' }}>
             <button

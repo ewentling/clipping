@@ -365,6 +365,16 @@ body {
   margin-top: 6px;
 }
 
+.clip-warning {
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--note-bg);
+  border-left: 4px solid var(--note-border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--note-color);
+}
+
 .clip-count-preview {
   display: flex;
   gap: 4px;
@@ -863,6 +873,12 @@ body {
   cursor: pointer;
   font-size: 1rem;
   color: #f59e0b;
+}
+
+.title-counter {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
 /* Confirm dialog overlay */

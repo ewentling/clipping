@@ -11,7 +11,7 @@ function ClipGallery({ clips, onDownload }) {
   const [editingTitle, setEditingTitle] = useState(null); // clipId being edited
   const [editTitleValue, setEditTitleValue] = useState('');
   const [localTitles, setLocalTitles] = useState({});
-  const [batchProgress, setBatchProgress] = useState(null); // { done, total }
+  const [batchProgress, setBatchProgress] = useState(null); // { done, total, currentClip }
   const [favorites, setFavorites] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('clipFavorites') || '{}');
@@ -144,10 +144,12 @@ function ClipGallery({ clips, onDownload }) {
 
   const handleBatchDownload = async () => {
     const total = clips.length;
-    setBatchProgress({ done: 0, total });
+    setBatchProgress({ done: 0, total, currentClip: null });
     for (let i = 0; i < clips.length; i++) {
+      const clipTitle = getDisplayTitle(clips[i], i);
+      setBatchProgress({ done: i, total, currentClip: clipTitle });
       await onDownload(clips[i].clipId);
-      setBatchProgress({ done: i + 1, total });
+      setBatchProgress({ done: i + 1, total, currentClip: clipTitle });
       // Small delay between downloads to avoid browser blocking
       if (i < clips.length - 1) await new Promise(r => setTimeout(r, 600));
     }
@@ -158,6 +160,7 @@ function ClipGallery({ clips, onDownload }) {
   const getDisplayTitle = (clip, index) =>
     localTitles[clip.clipId] || clip.title || `Viral Clip #${index + 1}`;
 
+  const titleLimit = 150;
   const isFiltered = filterType !== 'all' || sortBy !== 'score';
   const resetFilters = () => {
     setFilterType('all');
@@ -176,7 +179,8 @@ function ClipGallery({ clips, onDownload }) {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           {batchProgress && (
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Downloading {batchProgress.done}/{batchProgress.total}...
+              Downloading {batchProgress.done}/{batchProgress.total}
+              {batchProgress.currentClip ? ` • ${batchProgress.currentClip}` : ''}...
             </span>
           )}
           <button
@@ -254,22 +258,29 @@ function ClipGallery({ clips, onDownload }) {
               <div className="clip-info">
                 {/* Inline editable title */}
                 {editingTitle === clip.clipId ? (
-                  <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
-                    <input
-                      type="text"
-                      value={editTitleValue}
-                      onChange={e => setEditTitleValue(e.target.value)}
-                      onFocus={(e) => e.target.select()}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') saveTitle(clip.clipId);
-                        if (e.key === 'Escape') setEditingTitle(null);
-                      }}
-                      autoFocus
-                      aria-label="Edit clip title"
-                      style={{ flex: 1, padding: '4px 8px', border: '1px solid #667eea', borderRadius: '4px', fontSize: '0.9rem', background: 'var(--input-bg)', color: 'var(--text-primary)' }}
-                    />
-                    <button onClick={() => saveTitle(clip.clipId)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: '#667eea', color: 'white', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Save title">✓</button>
-                    <button onClick={() => setEditingTitle(null)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: 'var(--btn-secondary-bg)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Cancel edit">✕</button>
+                  <div style={{ marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <input
+                        type="text"
+                        value={editTitleValue}
+                        maxLength={titleLimit}
+                        onChange={e => setEditTitleValue(e.target.value)}
+                        onFocus={(e) => e.target.select()}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveTitle(clip.clipId);
+                          if (e.key === 'Escape') setEditingTitle(null);
+                        }}
+                        autoFocus
+                        aria-label="Edit clip title (max 150 characters)"
+                        aria-describedby={`title-count-${clip.clipId}`}
+                        style={{ flex: 1, padding: '4px 8px', border: '1px solid #667eea', borderRadius: '4px', fontSize: '0.9rem', background: 'var(--input-bg)', color: 'var(--text-primary)' }}
+                      />
+                      <button onClick={() => saveTitle(clip.clipId)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: '#667eea', color: 'white', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Save title">✓</button>
+                      <button onClick={() => setEditingTitle(null)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: 'var(--btn-secondary-bg)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Cancel edit">✕</button>
+                    </div>
+                    <div id={`title-count-${clip.clipId}`} className="title-counter">
+                      {editTitleValue.length}/{titleLimit} characters
+                    </div>
                   </div>
                 ) : (
                   <div className="clip-title-row">
