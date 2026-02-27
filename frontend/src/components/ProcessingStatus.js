@@ -21,6 +21,7 @@ function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
 
   const activeStep = steps.findIndex(s => progress <= s.threshold);
   const currentStep = activeStep === -1 ? steps.length - 1 : activeStep;
+  const nextStep = currentStep < steps.length - 1 ? steps[currentStep + 1] : null;
 
   return (
     <div className="card" role="status" aria-live="polite" aria-label="Processing status">
@@ -42,6 +43,10 @@ function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
           <div className="progress-fill" style={{ width: `${progress}%` }} />
         </div>
         <div className="status-text">{statusMessage || 'Starting...'}</div>
+        <div className="status-meta">
+          Step {currentStep + 1} of {steps.length}: {steps[currentStep]?.name}
+          {nextStep && ` • Next: ${nextStep.name}`}
+        </div>
       </div>
 
       {/* Steps with connecting lines */}

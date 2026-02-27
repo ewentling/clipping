@@ -63,6 +63,12 @@ function ClipGallery({ clips, onDownload }) {
     return '#6b7280';
   };
 
+  const getConfidenceLabel = (score) => {
+    if (score >= 0.8) return { label: 'High', icon: '✓' };
+    if (score >= 0.6) return { label: 'Medium', icon: '◐' };
+    return { label: 'Exploratory', icon: '◇' };
+  };
+
   const handleCopyLink = async (clipId) => {
     const url = `${API_BASE_URL}${endpoints.download(clipId)}`;
     try {
@@ -85,6 +91,25 @@ function ClipGallery({ clips, onDownload }) {
     const title = localTitles[clip.clipId] || clip.title || 'Viral Clip';
     const text = encodeURIComponent(`Check out this viral clip: ${title} `);
     window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyCaption = async (clip) => {
+    const title = localTitles[clip.clipId] || clip.title || 'Viral Clip';
+    const caption = `${title}\n\n#Clipnotic #ViralClips #Shorts`;
+    try {
+      await navigator.clipboard.writeText(caption);
+      toast.success('Caption copied!');
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = caption;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast.success('Caption copied!');
+    }
   };
 
   const startEditTitle = (clip) => {
@@ -253,6 +278,9 @@ function ClipGallery({ clips, onDownload }) {
                   >
                     {((clip.score || 0) * 100).toFixed(0)}% Viral
                   </span>
+                  <span className="clip-confidence">
+                    {getConfidenceLabel(clip.score || 0).icon} {getConfidenceLabel(clip.score || 0).label}
+                  </span>
                 </div>
                 {/* Timestamps */}
                 {(clip.startTime != null || clip.endTime != null) && (
@@ -298,6 +326,13 @@ function ClipGallery({ clips, onDownload }) {
                     aria-label="Share to Twitter/X"
                   >
                     🐦 Tweet
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={() => handleCopyCaption(clip)}
+                    aria-label="Copy clip caption"
+                  >
+                    ✨ Caption
                   </button>
                 </div>
               </div>

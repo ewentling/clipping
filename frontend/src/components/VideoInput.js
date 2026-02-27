@@ -99,6 +99,16 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
     localStorage.setItem(RECENT_URLS_KEY, JSON.stringify(updated));
   };
 
+  const recommendedClips = videoInfo?.duration
+    ? videoInfo.duration <= 180
+      ? 3
+      : videoInfo.duration <= 600
+        ? 5
+        : videoInfo.duration <= 1200
+          ? 7
+          : 10
+    : null;
+
   const trimmedUrl = videoUrl.trim();
   const urlLength = videoUrl.length;
   const isUrlReady = trimmedUrl.length >= 10;
@@ -153,6 +163,7 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
               aria-invalid={!!validationError}
               aria-describedby={validationError ? 'url-error' : undefined}
               autoComplete="url"
+              list="youtube-suggestions"
             />
             <button
               type="submit"
@@ -165,6 +176,12 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
                 : <><span aria-hidden="true">🔍</span>Analyze</>}
             </button>
           </div>
+          <datalist id="youtube-suggestions">
+            <option value="https://www.youtube.com/watch?v=" />
+            <option value="https://youtu.be/" />
+            <option value="https://www.youtube.com/shorts/" />
+            <option value="https://www.youtube.com/playlist?list=" />
+          </datalist>
           <div className="url-meta" aria-live="polite">
             <span className={`url-status ${validationState}`} aria-label="URL validation status">
               {validationState === 'valid' && '✅ Looks good'}
@@ -284,7 +301,14 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear }) 
                   <span key={i} className="clip-count-dot" />
                 ))}
               </div>
-              <span className="clip-helper-text">Recommended: 5 clips for most videos</span>
+              <span className="clip-helper-text">
+                {recommendedClips ? `Recommended: ${recommendedClips} clips for this video` : 'Recommended: 5 clips for most videos'}
+              </span>
+              {recommendedClips && recommendedClips !== numClips && (
+                <button type="button" className="btn-link" onClick={() => setNumClips(recommendedClips)}>
+                  Use recommended
+                </button>
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px', marginTop: '20px', flexWrap: 'wrap' }}>

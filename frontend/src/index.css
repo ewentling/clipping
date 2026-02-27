@@ -452,6 +452,12 @@ body {
   font-weight: 600;
 }
 
+.clip-confidence {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
 .clip-actions {
   display: flex;
   gap: 10px;
@@ -516,6 +522,13 @@ body {
   text-align: center;
   color: var(--text-secondary);
   font-size: 0.95rem;
+}
+
+.status-meta {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 6px;
 }
 
 .alert {
