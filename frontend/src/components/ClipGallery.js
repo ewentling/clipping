@@ -82,6 +82,12 @@ function ClipGallery({ clips, onDownload }) {
     return { label: 'Exploratory', icon: '◇' };
   };
 
+  const getScoreTooltip = (score) => {
+    if (score >= 0.8) return 'High viral potential';
+    if (score >= 0.6) return 'Good engagement';
+    return 'Exploratory pick';
+  };
+
   const handleCopyLink = async (clipId) => {
     const url = `${API_BASE_URL}${endpoints.download(clipId)}`;
     try {
@@ -188,6 +194,7 @@ function ClipGallery({ clips, onDownload }) {
             onClick={handleBatchDownload}
             disabled={!!batchProgress}
             aria-label={batchProgress ? `Downloading ${batchProgress.done} of ${batchProgress.total}` : 'Download all clips'}
+            data-action="download-all"
           >
             {batchProgress
               ? <><span className="loading-spinner" aria-hidden="true" />{batchProgress.done}/{batchProgress.total}</>
@@ -315,6 +322,7 @@ function ClipGallery({ clips, onDownload }) {
                     className="clip-score"
                     style={{ background: getViralScoreColor(clip.score || 0) }}
                     aria-label={`Viral score: ${((clip.score || 0) * 100).toFixed(0)}%`}
+                    data-tooltip={getScoreTooltip(clip.score || 0)}
                   >
                     {((clip.score || 0) * 100).toFixed(0)}% Viral
                   </span>

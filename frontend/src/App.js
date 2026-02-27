@@ -44,6 +44,9 @@ function App() {
       if (e.key === '?' && !e.target.matches('input, textarea, select')) {
         setShowHelp(prev => !prev);
       }
+      if (e.key.toLowerCase() === 'd' && !e.target.matches('input, textarea, select') && clips.length > 0) {
+        document.querySelector('[data-action="download-all"]')?.click();
+      }
       if (e.key === 'Escape') {
         setShowHelp(false);
         setShowConfirm(false);
@@ -51,7 +54,7 @@ function App() {
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, []);
+  }, [clips.length]);
 
   useEffect(() => {
     checkApiHealth();
@@ -367,6 +370,10 @@ function App() {
             <div className="shortcut-row">
               <span className="shortcut-key">Space</span>
               <span className="shortcut-desc">Play/Pause video preview</span>
+            </div>
+            <div className="shortcut-row">
+              <span className="shortcut-key">D</span>
+              <span className="shortcut-desc">Download all clips</span>
             </div>
             <div style={{ marginTop: '20px', textAlign: 'right' }}>
               <button className="btn btn-secondary" onClick={() => setShowHelp(false)}>Close</button>
