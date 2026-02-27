@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 const SECONDS_PER_MINUTE = 60;
+const MILLISECONDS_PER_SECOND = 1000;
 
 function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   const [progress, setProgress] = useState(0);
@@ -26,9 +27,9 @@ function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   useEffect(() => {
     startTimeRef.current = Date.now();
     const timer = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      const elapsed = Math.floor((Date.now() - startTimeRef.current) / MILLISECONDS_PER_SECOND);
       setElapsedSeconds(elapsed);
-    }, 1000);
+    }, MILLISECONDS_PER_SECOND);
     return () => clearInterval(timer);
   }, [jobId]);
 

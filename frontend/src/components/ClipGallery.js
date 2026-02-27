@@ -116,7 +116,7 @@ function ClipGallery({ clips, onDownload }) {
         await navigator.clipboard.writeText(text);
         return true;
       } catch (err) {
-        if (err?.name === 'NotAllowedError') return false;
+        if (err && err.name === 'NotAllowedError') return false;
         return fallbackCopy(text);
       }
     }
@@ -249,7 +249,7 @@ function ClipGallery({ clips, onDownload }) {
           />
           ⭐ Favorites
         </label>
-        {(filterType !== 'all' || sortBy !== 'score') && (
+        {isFiltered && (
           <span className="filter-status">
             Showing {sortedFilteredClips.length} of {clips.length}
             {filterType !== 'all' && ` • Filtered by ${filterType}`}
