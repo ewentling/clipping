@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+const SECONDS_PER_MINUTE = 60;
+
 function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   const [progress, setProgress] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -31,8 +33,8 @@ function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   }, [jobId]);
 
   const formatElapsed = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const mins = Math.floor(seconds / SECONDS_PER_MINUTE);
+    const secs = seconds % SECONDS_PER_MINUTE;
     return `${mins}:${String(secs).padStart(2, '0')}`;
   };
 

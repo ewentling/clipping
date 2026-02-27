@@ -2,6 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 const RECENT_URLS_KEY = 'recentVideoUrls';
 const MAX_RECENT = 5;
+const YOUTUBE_VIDEO_ID_LENGTH = 11;
+const THREE_MINUTES = 180;
+const TEN_MINUTES = 600;
+const TWENTY_MINUTES = 1200;
 
 function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, onRecentUpdate }) {
   const [videoUrl, setVideoUrl] = useState('');
@@ -114,9 +118,9 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
   };
 
   const getRecommendedClips = (duration) => {
-    if (duration <= 180) return 3;
-    if (duration <= 600) return 5;
-    if (duration <= 1200) return 7;
+    if (duration <= THREE_MINUTES) return 3;
+    if (duration <= TEN_MINUTES) return 5;
+    if (duration <= TWENTY_MINUTES) return 7;
     return 10;
   };
   const recommendedClips = videoInfo?.duration ? getRecommendedClips(videoInfo.duration) : null;
@@ -195,7 +199,7 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
             <option value="https://youtu.be/" label="Short link" />
             <option value="https://www.youtube.com/shorts/" label="Shorts" />
             <option value="https://www.youtube.com/playlist?list=" label="Playlist" />
-            <option value="dQw4w9WgXcQ" label="Video ID (11 chars)" />
+            <option value="dQw4w9WgXcQ" label={`Video ID (${YOUTUBE_VIDEO_ID_LENGTH} chars)`} />
           </datalist>
           <div className="url-meta" aria-live="polite">
             <span className={`url-status ${validationState}`} aria-label="URL validation status">

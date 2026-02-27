@@ -5,6 +5,8 @@ import { API_BASE_URL, CAPTION_HASHTAGS, endpoints } from '../config';
 import PreviewModal from './PreviewModal';
 
 const TITLE_LIMIT = 150;
+// Delay between downloads to avoid browser blocking.
+const DOWNLOAD_DELAY_MS = 600;
 
 function ClipGallery({ clips, onDownload }) {
   const [previewClip, setPreviewClip] = useState(null);
@@ -93,14 +95,19 @@ function ClipGallery({ clips, onDownload }) {
   };
 
   const fallbackCopy = (text) => {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const copied = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return copied;
+    } catch {
+      return false;
+    }
   };
 
   const copyText = async (text) => {
@@ -110,12 +117,10 @@ function ClipGallery({ clips, onDownload }) {
         return true;
       } catch (err) {
         if (err?.name === 'NotAllowedError') return false;
-        fallbackCopy(text);
-        return true;
+        return fallbackCopy(text);
       }
     }
-    fallbackCopy(text);
-    return true;
+    return fallbackCopy(text);
   };
 
   const handleCopyLink = async (clipId) => {
@@ -165,7 +170,7 @@ function ClipGallery({ clips, onDownload }) {
       await onDownload(clips[i].clipId);
       setBatchProgress({ done: i + 1, total, currentClip: clipTitle });
       // Small delay between downloads to avoid browser blocking
-      if (i < clips.length - 1) await new Promise(r => setTimeout(r, 600));
+      if (i < clips.length - 1) await new Promise(r => setTimeout(r, DOWNLOAD_DELAY_MS));
     }
     setBatchProgress(null);
     toast.success(`Downloaded all ${total} clips!`);
