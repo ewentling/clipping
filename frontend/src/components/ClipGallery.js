@@ -28,7 +28,8 @@ const sanitizeFileName = (name) => {
   safeName = Array.from(safeName).filter((char) => char.charCodeAt(0) >= MIN_PRINTABLE_ASCII).join('');
   safeName = safeName.trim();
   if (!safeName) return '';
-  const baseName = safeName.split('.')[0];
+  const lastDot = safeName.lastIndexOf('.');
+  const baseName = lastDot > 0 ? safeName.slice(0, lastDot) : safeName;
   if (RESERVED_FILENAME_WORDS.has(baseName.toUpperCase())) {
     safeName = `${safeName}-clip`;
   }

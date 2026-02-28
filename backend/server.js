@@ -79,7 +79,8 @@ const DEFAULT_VIDEO_URL = process.env.DEMO_VIDEO_URL || 'https://example.com/dem
 
 const pruneMap = (map, maxSize) => {
   if (!map || typeof map.size !== 'number' || map.size <= maxSize) return;
-  while (map.size > maxSize) {
+  const toRemove = map.size - maxSize;
+  for (let i = 0; i < toRemove; i += 1) {
     const firstKey = map.keys().next().value;
     if (firstKey === undefined) break;
     map.delete(firstKey);
@@ -250,7 +251,7 @@ app.post('/api/clips/generate', async (req, res) => {
     jobs.set(jobId, job);
     console.log(`Starting clip generation for ${videoUrl}, clips: ${parsedNum}`);
 
-    setTimeout(() => {
+    const generationTimer = setTimeout(() => {
       try {
         const clips = buildClipsForJob(jobId, parsedNum);
         jobs.set(jobId, { status: 'completed', progress: 100, clips });
@@ -260,6 +261,9 @@ app.post('/api/clips/generate', async (req, res) => {
         jobs.set(jobId, { status: 'failed', progress: 100, clips: [], error: 'Failed to generate clips' });
       }
     }, 1000);
+    if (generationTimer.unref) {
+      generationTimer.unref();
+    }
 
     res.json({ success: true, jobId, message: 'Processing started' });
   } catch (error) {
