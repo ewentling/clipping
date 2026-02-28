@@ -12,6 +12,8 @@ export const endpoints = {
   download: (clipId) => `/api/clips/download/${clipId}`,
   list: '/api/clips/list',
   thumbnail: (clipId) => `/api/clips/thumbnail/${clipId}`,
+  caption: (clipId) => `/api/clips/caption/${clipId}`,
+  metadata: (clipId) => `/api/clips/metadata/${clipId}`,
   videoInfo: '/api/videos/info',
   validate: '/api/videos/validate'
 };

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "node tests/test.js",
+    "test": "node tests/test-clipping.cjs",
     "agent:coordinator": "node src/agents/coordinator.js",
     "agent:downloader": "node src/agents/downloader.js",
     "agent:analyzer": "node src/agents/analyzer.js",
