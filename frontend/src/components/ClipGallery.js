@@ -63,6 +63,9 @@ function ClipGallery({ clips, onDownload }) {
         const titleB = (localTitles[b.clipId] || b.title || '').toLowerCase();
         return titleA.localeCompare(titleB);
       });
+    } else if (sortBy === 'start') {
+      const val = (v) => (parseFloat(v ?? 0) || 0);
+      result.sort((a, b) => val(a.startTime) - val(b.startTime));
     }
     return result;
   }, [clips, sortBy, filterType, favorites, showFavoritesOnly, searchTerm, minScore, localTitles]);
@@ -134,6 +137,22 @@ function ClipGallery({ clips, onDownload }) {
     window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank', 'noopener,noreferrer');
   };
 
+  const handleShareWhatsApp = (clip, index) => {
+    const text = encodeURIComponent(`${getDisplayTitle(clip, index)}\n${getDescriptionText(clip)}\n${API_BASE_URL}${endpoints.download(clip.clipId)}`);
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleShareEmail = (clip, index) => {
+    const subject = encodeURIComponent(`Clip: ${getDisplayTitle(clip, index)}`);
+    const body = encodeURIComponent([
+      getDescriptionText(clip),
+      getCaptionText(clip),
+      getHashtags(clip),
+      `${API_BASE_URL}${endpoints.download(clip.clipId)}`
+    ].join('\n\n'));
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank', 'noopener,noreferrer');
+  };
+
   const toggleFavorite = (clipId) => {
     setFavorites(prev => ({ ...prev, [clipId]: !prev[clipId] }));
   };
@@ -190,6 +209,13 @@ function ClipGallery({ clips, onDownload }) {
     else toast.error('Unable to copy description');
   };
 
+  const handleCopyCaptionPlusTags = async (clip) => {
+    const copied = await copyText([getCaptionText(clip), getHashtags(clip)].join('\n\n'));
+    if (copied === 'success') toast.success('Caption + hashtags copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy caption + hashtags');
+  };
+
   const handleCopyMetadata = async (clip, index) => {
     const payload = {
       title: getDisplayTitle(clip, index),
@@ -204,6 +230,13 @@ function ClipGallery({ clips, onDownload }) {
     if (copied === 'success') toast.success('Metadata copied!');
     else if (copied === 'denied') toast.error('Clipboard permission denied');
     else toast.error('Unable to copy metadata');
+  };
+
+  const handleCopyMetadataLink = async (clip) => {
+    const copied = await copyText(`${API_BASE_URL}${endpoints.metadata(clip.clipId)}`);
+    if (copied === 'success') toast.success('Metadata link copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy metadata link');
   };
 
   const handleOpenClip = (clipId) => {
@@ -227,6 +260,14 @@ function ClipGallery({ clips, onDownload }) {
     } catch {
       toast.error('Failed to download captions', { id: toastId });
     }
+  };
+
+  const handleCopyCaptionCurl = async (clip) => {
+    const cmd = `curl -L "${API_BASE_URL}${endpoints.caption(clip.clipId)}" -o "${clip.clipId}.srt"`;
+    const copied = await copyText(cmd);
+    if (copied === 'success') toast.success('Caption download command copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy command');
   };
 
   const getFileExtensionFromContentType = (contentType) => {
@@ -265,6 +306,13 @@ function ClipGallery({ clips, onDownload }) {
     }
   };
 
+  const handleCopyThumbnailLink = async (clip) => {
+    const copied = await copyText(`${API_BASE_URL}${endpoints.thumbnail(clip.clipId)}`);
+    if (copied === 'success') toast.success('Thumbnail link copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy thumbnail link');
+  };
+
   const handleDownloadMetadata = async (clip, index) => {
     const toastId = toast.loading('Preparing metadata...');
     try {
@@ -282,6 +330,14 @@ function ClipGallery({ clips, onDownload }) {
     } catch {
       toast.error('Failed to download metadata', { id: toastId });
     }
+  };
+
+  const handleCopyDownloadCurl = async (clip) => {
+    const cmd = `curl -L "${API_BASE_URL}${endpoints.download(clip.clipId)}" -o "${clip.clipId}.mp4"`;
+    const copied = await copyText(cmd);
+    if (copied === 'success') toast.success('Download command copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy command');
   };
 
   const handleShareLinkedIn = (clip) => {
@@ -345,6 +401,37 @@ function ClipGallery({ clips, onDownload }) {
   const getDownloadFileName = (clip, index) => {
     const displayTitle = getDisplayTitle(clip, index);
     return displayTitle.trim() || clip.clipId;
+  };
+
+  const getTimestampRange = (clip) => {
+    const hasStart = clip.startTime != null;
+    const hasEnd = clip.endTime != null;
+    const computedEnd = hasEnd
+      ? clip.endTime
+      : (clip.startTime != null && clip.duration != null
+        ? Number(clip.startTime) + Number(clip.duration)
+        : null);
+    const start = formatTimestamp(hasStart ? clip.startTime : null);
+    const end = formatTimestamp(computedEnd);
+    if (!start && !end) return 'Timestamps unavailable';
+    return `Start: ${start || '--'} • End: ${end || '--'}`;
+  };
+
+  const handleCopyTimestamps = async (clip) => {
+    const copied = await copyText(getTimestampRange(clip));
+    if (copied === 'success') toast.success('Timestamps copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy timestamps');
+  };
+
+  const handleOpenAtSourceTime = (clip) => {
+    if (!clip.videoUrl) return;
+    const startParam = Math.max(0, Math.floor(Number(clip.startTime ?? 0)));
+    const isYouTube = /youtu\.be|youtube\.com/.test(clip.videoUrl);
+    const url = isYouTube
+      ? `${clip.videoUrl}${clip.videoUrl.includes('?') ? '&' : '?'}t=${startParam}`
+      : clip.videoUrl;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const getMotionProps = useCallback((index) => (
@@ -414,6 +501,7 @@ function ClipGallery({ clips, onDownload }) {
           <option value="score">Viral Score ↓</option>
           <option value="duration">Duration ↑</option>
           <option value="title">Title A-Z</option>
+          <option value="start">Start Time ↑</option>
           <option value="index">Original Order</option>
         </select>
         <label htmlFor="filter-select" style={{ marginLeft: '10px' }}>Type:</label>
@@ -465,7 +553,7 @@ function ClipGallery({ clips, onDownload }) {
             {showFavoritesOnly && ' • Favorites only'}
             {searchTerm.trim() && ` • Matching "${searchTerm.trim()}"`}
             {minScore > 0 && ` • Score ≥ ${minScore}%`}
-            {sortBy !== 'score' && ` • Sorted by ${sortBy === 'duration' ? 'duration' : sortBy === 'title' ? 'title' : 'original'}`}
+            {sortBy !== 'score' && ` • Sorted by ${sortBy === 'duration' ? 'duration' : sortBy === 'title' ? 'title' : sortBy === 'start' ? 'start time' : 'original'}`}
             {sortedFilteredClips.length > 0 && ` • Total ${formatDuration(totalDuration)}`}
             {isFiltered && (
               <button type="button" className="btn-link" onClick={resetFilters}>
@@ -579,6 +667,9 @@ function ClipGallery({ clips, onDownload }) {
                 <div style={{ ...detailStyle, marginBottom: '12px' }}>
                   <strong>Description:</strong> {getDescriptionText(clip)}
                 </div>
+                <div style={{ ...detailStyle, marginBottom: '12px' }}>
+                  <strong>Timing:</strong> {getTimestampRange(clip)}
+                </div>
                 <div className="clip-actions">
                   <button
                     className="btn-preview"
@@ -608,6 +699,15 @@ function ClipGallery({ clips, onDownload }) {
                   >
                     🧭 Open
                   </button>
+                  {clip.videoUrl && (
+                    <button
+                      className="btn-preview"
+                      onClick={() => handleOpenAtSourceTime(clip)}
+                      aria-label={`Open source video at ${formatTimestamp(clip.startTime) || 'start'}`}
+                    >
+                      ⏯️ Jump
+                    </button>
+                  )}
                   <button
                     className="btn-preview"
                     onClick={() => handleDownloadThumbnail(clip)}
@@ -627,10 +727,31 @@ function ClipGallery({ clips, onDownload }) {
                   </button>
                   <button
                     className="btn-share"
+                    onClick={() => handleCopyThumbnailLink(clip)}
+                    aria-label="Copy thumbnail link"
+                  >
+                    🖼️ Link
+                  </button>
+                  <button
+                    className="btn-share"
                     onClick={() => handleCopySocialBundle(clip, index)}
                     aria-label="Copy social bundle"
                   >
                     📦 Bundle
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={() => handleCopyCaptionPlusTags(clip)}
+                    aria-label="Copy caption and hashtags"
+                  >
+                    🎯 Caption+Tags
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={() => handleCopyMetadataLink(clip)}
+                    aria-label="Copy metadata link"
+                  >
+                    🔗 Meta URL
                   </button>
                   <button
                     className="btn-share"
@@ -663,6 +784,13 @@ function ClipGallery({ clips, onDownload }) {
                   </button>
                   <button
                     className="btn-share"
+                    onClick={() => handleCopyTimestamps(clip)}
+                    aria-label="Copy clip timestamps"
+                  >
+                    ⏱️ Timestamps
+                  </button>
+                  <button
+                    className="btn-share"
                     onClick={() => handleCopyMetadata(clip, index)}
                     aria-label="Copy clip metadata"
                   >
@@ -684,6 +812,20 @@ function ClipGallery({ clips, onDownload }) {
                   </button>
                   <button
                     className="btn-share"
+                    onClick={() => handleCopyDownloadCurl(clip)}
+                    aria-label="Copy curl download command"
+                  >
+                    🧰 curl MP4
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={() => handleCopyCaptionCurl(clip)}
+                    aria-label="Copy curl caption command"
+                  >
+                    🧰 curl SRT
+                  </button>
+                  <button
+                    className="btn-share"
                     style={{ background: '#0a66c2', color: 'white' }}
                     onClick={() => handleShareLinkedIn(clip)}
                     aria-label="Share to LinkedIn"
@@ -692,11 +834,26 @@ function ClipGallery({ clips, onDownload }) {
                   </button>
                   <button
                     className="btn-share"
+                    style={{ background: '#25d366', color: 'white' }}
+                    onClick={() => handleShareWhatsApp(clip, index)}
+                    aria-label="Share to WhatsApp"
+                  >
+                    📱 WhatsApp
+                  </button>
+                  <button
+                    className="btn-share"
                     style={{ background: '#ff4500', color: 'white' }}
                     onClick={() => handleShareReddit(clip, index)}
                     aria-label="Share to Reddit"
                   >
                     👽 Reddit
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={() => handleShareEmail(clip, index)}
+                    aria-label="Share via email"
+                  >
+                    ✉️ Email
                   </button>
                 </div>
               </div>
