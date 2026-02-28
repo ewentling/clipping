@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { toast } from 'react-hot-toast';
 
 const RECENT_URLS_KEY = 'recentVideoUrls';
 const MAX_RECENT = 5;
@@ -7,9 +8,16 @@ const THREE_MINUTES = 180;
 const TEN_MINUTES = 600;
 const TWENTY_MINUTES = 1200;
 const DEFAULT_RECOMMENDED_CLIPS = 5;
+const EXAMPLE_URL = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
 
 function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, onRecentUpdate }) {
-  const [videoUrl, setVideoUrl] = useState('');
+  const [videoUrl, setVideoUrl] = useState(() => {
+    try {
+      return localStorage.getItem('lastAnalyzedUrl') || '';
+    } catch {
+      return '';
+    }
+  });
   const [numClips, setNumClips] = useState(() => {
     const saved = localStorage.getItem('preferredNumClips');
     return saved ? parseInt(saved, 10) : DEFAULT_RECOMMENDED_CLIPS;
@@ -17,6 +25,16 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState(null);
   const [showRecent, setShowRecent] = useState(true);
+  const [showFormats, setShowFormats] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
+  const [showAllTags, setShowAllTags] = useState(false);
+  const [lastAnalyzedUrl, setLastAnalyzedUrl] = useState(() => {
+    try {
+      return localStorage.getItem('lastAnalyzedUrl') || '';
+    } catch {
+      return '';
+    }
+  });
   const [recentUrls, setRecentUrls] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(RECENT_URLS_KEY) || '[]');
@@ -50,27 +68,38 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
     onRecentUpdate?.(updated.length);
   }, [recentUrls, onRecentUpdate]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const trimmed = videoUrl.trim();
+  const submitUrl = async (trimmed) => {
     if (!trimmed) {
       setValidationError('Please enter a video URL');
-      return;
+      return false;
     }
     if (!validateYouTubeUrl(trimmed)) {
       setValidationError('Please enter a valid YouTube URL');
-      return;
+      return false;
     }
     setValidationError(null);
     setIsValidating(true);
     try {
       await onSubmit(trimmed);
       saveRecentUrl(trimmed);
+      setLastAnalyzedUrl(trimmed);
+      try {
+        localStorage.setItem('lastAnalyzedUrl', trimmed);
+      } catch {
+        // ignore storage failures
+      }
+      return true;
     } catch {
       // Error handled by parent
+      return false;
     } finally {
       setIsValidating(false);
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await submitUrl(videoUrl.trim());
   };
 
   const handleGenerateClick = () => {
@@ -145,9 +174,71 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
     }
   };
 
+  const handlePasteAndAnalyze = async () => {
+    if (isProcessing || isValidating) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) {
+        setValidationError('Clipboard is empty');
+        return;
+      }
+      setVideoUrl(text);
+      setValidationError(null);
+      await submitUrl(text.trim());
+    } catch {
+      setValidationError('Clipboard access is blocked');
+    }
+  };
+
   const handleClear = () => {
     setVideoUrl('');
     setValidationError(null);
+  };
+
+  const handleUseExample = () => {
+    setVideoUrl(EXAMPLE_URL);
+    setValidationError(null);
+  };
+
+  const handleUseLastUrl = () => {
+    if (!lastAnalyzedUrl) return;
+    setVideoUrl(lastAnalyzedUrl);
+    setValidationError(null);
+  };
+
+  const fallbackCopy = (text) => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const copied = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return copied;
+    } catch {
+      return false;
+    }
+  };
+
+  const copyText = async (text) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        return fallbackCopy(text);
+      }
+    }
+    return fallbackCopy(text);
+  };
+
+  const handleCopyTitle = async () => {
+    if (!videoInfo?.title) return;
+    const copied = await copyText(videoInfo.title);
+    if (copied) toast.success('Video title copied!');
+    else toast.error('Unable to copy title');
   };
 
   return (
@@ -211,10 +302,38 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
             <span className="url-count" aria-label={`URL length ${urlLength} characters`}>
               {urlLength} chars
             </span>
+            {isUrlValid && (
+              <span className="url-id" aria-label={`Video ID ${extractVideoId(trimmedUrl)}`}>
+                ID: {extractVideoId(trimmedUrl)}
+              </span>
+            )}
+          </div>
+          <div className="format-hint">
+            <button type="button" className="btn-link" onClick={() => setShowFormats(s => !s)}>
+              {showFormats ? 'Hide supported formats' : 'Show supported formats'}
+            </button>
+            {showFormats && (
+              <ul>
+                <li>youtube.com/watch?v=</li>
+                <li>youtu.be/</li>
+                <li>youtube.com/shorts/</li>
+                <li>youtube.com/playlist?list=</li>
+                <li>Raw 11-character video ID</li>
+              </ul>
+            )}
           </div>
           <div className="input-actions">
             <button type="button" className="btn btn-secondary" onClick={handlePaste} disabled={isProcessing}>
               📋 Paste
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={handlePasteAndAnalyze} disabled={isProcessing || isValidating}>
+              ⚡ Paste &amp; Analyze
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={handleUseExample} disabled={isProcessing}>
+              ✨ Example
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={handleUseLastUrl} disabled={isProcessing || !lastAnalyzedUrl}>
+              🕘 Last URL
             </button>
             <button type="button" className="btn btn-secondary" onClick={handleClear} disabled={isProcessing || !videoUrl}>
               🧹 Clear
@@ -231,7 +350,7 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
           {recentUrls.length > 0 && (
             <div className="recent-urls" aria-label="Recently used URLs">
               <div className="recent-header">
-                <h5>🕐 Recent</h5>
+                <h5>🕐 Recent ({recentUrls.length})</h5>
                 <div className="recent-actions">
                   <button type="button" className="btn-link" onClick={() => setShowRecent(s => !s)}>
                     {showRecent ? 'Hide' : 'Show'}
@@ -288,24 +407,40 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
               }}
             />
             <div className="video-details">
-              <h3>{videoInfo.title}</h3>
+              <div className="video-title-row">
+                <h3>{videoInfo.title}</h3>
+                <button type="button" className="btn-link" onClick={handleCopyTitle} aria-label="Copy video title">
+                  📋 Copy title
+                </button>
+              </div>
               <div className="video-meta">
                 <span className="meta-item"><span aria-hidden="true">👤</span>{videoInfo.uploader}</span>
                 <span className="meta-item"><span aria-hidden="true">⏱️</span>{formatDuration(videoInfo.duration)}</span>
                 <span className="meta-item"><span aria-hidden="true">👁️</span>{formatNumber(videoInfo.viewCount || 0)} views</span>
+                <span className="meta-item"><span aria-hidden="true">⏳</span>~{Math.max(1, Math.round((videoInfo.duration || 0) / 300))} min</span>
               </div>
               {videoInfo.description && (
-                <p style={{ marginTop: '10px', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5', maxHeight: '60px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {videoInfo.description}
-                </p>
+                <div>
+                  <p style={{ marginTop: '10px', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5', maxHeight: showFullDescription ? 'none' : '60px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {videoInfo.description}
+                  </p>
+                  <button type="button" className="btn-link" onClick={() => setShowFullDescription(s => !s)}>
+                    {showFullDescription ? 'Show less' : 'Show more'}
+                  </button>
+                </div>
               )}
               {videoInfo.tags && videoInfo.tags.length > 0 && (
                 <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {videoInfo.tags.slice(0, 5).map(tag => (
+                  {(showAllTags ? videoInfo.tags : videoInfo.tags.slice(0, 5)).map(tag => (
                     <span key={tag} style={{ background: '#667eea22', color: '#667eea', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>
                       #{tag}
                     </span>
                   ))}
+                  {videoInfo.tags.length > 5 && (
+                    <button type="button" className="btn-link" onClick={() => setShowAllTags(s => !s)}>
+                      {showAllTags ? 'Show fewer tags' : `+${videoInfo.tags.length - 5} more`}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

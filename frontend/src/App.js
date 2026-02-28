@@ -184,14 +184,24 @@ function App() {
     }, 600000);
   }, []);
 
-  const handleDownload = async (clipId) => {
+  const sanitizeFileName = (name) => {
+    if (!name) return '';
+    return name
+      .replace(/[<>:"/\\|?*]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 60);
+  };
+
+  const handleDownload = async (clipId, fileName) => {
     const toastId = toast.loading('Preparing download...');
     try {
       const response = await axios.get(`${API_BASE_URL}${endpoints.download(clipId)}`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${clipId}.mp4`);
+      const safeName = sanitizeFileName(fileName) || clipId;
+      link.setAttribute('download', `${safeName}.mp4`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -231,6 +241,7 @@ function App() {
 
   return (
     <div className="app-container">
+      <a href="#clip-gallery" className="skip-link">Skip to clip gallery</a>
       <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
       <header className="header">
         <div className="header-status" aria-live="polite" aria-label="API status">

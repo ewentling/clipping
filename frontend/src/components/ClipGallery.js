@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { API_BASE_URL, CAPTION_HASHTAGS, endpoints } from '../config';
 import PreviewModal from './PreviewModal';
@@ -13,10 +13,13 @@ function ClipGallery({ clips, onDownload }) {
   const [sortBy, setSortBy] = useState('score');
   const [filterType, setFilterType] = useState('all');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [minScore, setMinScore] = useState(0);
   const [editingTitle, setEditingTitle] = useState(null); // clipId being edited
   const [editTitleValue, setEditTitleValue] = useState('');
   const [localTitles, setLocalTitles] = useState({});
   const [batchProgress, setBatchProgress] = useState(null); // { done, total, currentClip }
+  const shouldReduceMotion = useReducedMotion();
   const [favorites, setFavorites] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('clipFavorites') || '{}');
@@ -37,17 +40,37 @@ function ClipGallery({ clips, onDownload }) {
     if (filterType !== 'all') {
       result = result.filter(c => (c.type || 'clip') === filterType);
     }
+    if (searchTerm.trim()) {
+      const normalized = searchTerm.trim().toLowerCase();
+      result = result.filter(c => {
+        const title = (localTitles[c.clipId] || c.title || '').toLowerCase();
+        return title.includes(normalized);
+      });
+    }
+    if (minScore > 0) {
+      result = result.filter(c => ((c.score || 0) * 100) >= minScore);
+    }
     if (sortBy === 'score') {
       result.sort((a, b) => (b.score || 0) - (a.score || 0));
     } else if (sortBy === 'duration') {
       result.sort((a, b) => (parseFloat(a.duration) || 0) - (parseFloat(b.duration) || 0));
+    } else if (sortBy === 'title') {
+      result.sort((a, b) => {
+        const titleA = (localTitles[a.clipId] || a.title || '').toLowerCase();
+        const titleB = (localTitles[b.clipId] || b.title || '').toLowerCase();
+        return titleA.localeCompare(titleB);
+      });
     }
     return result;
-  }, [clips, sortBy, filterType, favorites, showFavoritesOnly]);
+  }, [clips, sortBy, filterType, favorites, showFavoritesOnly, searchTerm, minScore, localTitles]);
 
   const uniqueTypes = useMemo(() => {
     return [...new Set(clips.map(c => c.type || 'clip'))];
   }, [clips]);
+
+  const totalDuration = useMemo(() => {
+    return sortedFilteredClips.reduce((sum, clip) => sum + (parseFloat(clip.duration) || 0), 0);
+  }, [sortedFilteredClips]);
 
   const formatDuration = (seconds) => {
     const secs = parseFloat(seconds);
@@ -150,6 +173,32 @@ function ClipGallery({ clips, onDownload }) {
     else toast.error('Unable to copy caption');
   };
 
+  const handleCopyHashtags = async () => {
+    const copied = await copyText(CAPTION_HASHTAGS);
+    if (copied === 'success') toast.success('Hashtags copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy hashtags');
+  };
+
+  const handleCopyInfo = async (clip, index) => {
+    const title = getDisplayTitle(clip, index);
+    const info = [
+      title,
+      `Type: ${clip.type || 'clip'}`,
+      `Duration: ${formatDuration(clip.duration)}`,
+      `Score: ${((clip.score || 0) * 100).toFixed(0)}%`
+    ].join('\n');
+    const copied = await copyText(info);
+    if (copied === 'success') toast.success('Clip info copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy clip info');
+  };
+
+  const handleOpenClip = (clipId) => {
+    const url = `${API_BASE_URL}${endpoints.download(clipId)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   const startEditTitle = (clip) => {
     setEditingTitle(clip.clipId);
     setEditTitleValue(localTitles[clip.clipId] || clip.title || '');
@@ -169,7 +218,7 @@ function ClipGallery({ clips, onDownload }) {
     for (let i = 0; i < clips.length; i++) {
       const clipTitle = getDisplayTitle(clips[i], i);
       setBatchProgress({ done: i, total, currentClip: clipTitle });
-      await onDownload(clips[i].clipId);
+      await onDownload(clips[i].clipId, clipTitle);
       setBatchProgress({ done: i + 1, total, currentClip: clipTitle });
       // Small delay between downloads to avoid browser blocking
       if (i < clips.length - 1) await new Promise(r => setTimeout(r, DOWNLOAD_DELAY_MS));
@@ -181,15 +230,33 @@ function ClipGallery({ clips, onDownload }) {
   const getDisplayTitle = (clip, index) =>
     localTitles[clip.clipId] || clip.title || `Viral Clip #${index + 1}`;
 
-  const isFiltered = filterType !== 'all' || sortBy !== 'score' || showFavoritesOnly;
+  const getMotionProps = (index) => (
+    shouldReduceMotion
+      ? {
+        initial: false,
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 1, scale: 1 },
+        transition: { duration: 0 }
+      }
+      : {
+        initial: { opacity: 0, y: 20 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, scale: 0.95 },
+        transition: { duration: 0.3, delay: index * 0.06 }
+      }
+  );
+
+  const isFiltered = filterType !== 'all' || sortBy !== 'score' || showFavoritesOnly || searchTerm.trim() || minScore > 0;
   const resetFilters = () => {
     setFilterType('all');
     setSortBy('score');
     setShowFavoritesOnly(false);
+    setSearchTerm('');
+    setMinScore(0);
   };
 
   return (
-    <div className="card">
+    <div className="card" id="clip-gallery">
       {previewClip && (
         <PreviewModal clip={previewClip} onClose={() => setPreviewClip(null)} />
       )}
@@ -229,6 +296,7 @@ function ClipGallery({ clips, onDownload }) {
         >
           <option value="score">Viral Score ↓</option>
           <option value="duration">Duration ↑</option>
+          <option value="title">Title A-Z</option>
           <option value="index">Original Order</option>
         </select>
         <label htmlFor="filter-select" style={{ marginLeft: '10px' }}>Type:</label>
@@ -243,6 +311,28 @@ function ClipGallery({ clips, onDownload }) {
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
+        <label htmlFor="search-input" style={{ marginLeft: '10px' }}>Search:</label>
+        <input
+          id="search-input"
+          className="clip-search"
+          type="search"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          placeholder="Search titles"
+          aria-label="Search clips by title"
+        />
+        <label htmlFor="score-range" style={{ marginLeft: '10px' }}>Min Score:</label>
+        <input
+          id="score-range"
+          type="range"
+          min="0"
+          max="100"
+          step="5"
+          value={minScore}
+          onChange={e => setMinScore(Number(e.target.value))}
+          aria-label="Minimum viral score"
+        />
+        <span className="score-value" aria-hidden="true">{minScore}%</span>
         <label className="favorite-toggle">
           <input
             type="checkbox"
@@ -256,7 +346,10 @@ function ClipGallery({ clips, onDownload }) {
             Showing {sortedFilteredClips.length} of {clips.length}
             {filterType !== 'all' && ` • Filtered by ${filterType}`}
             {showFavoritesOnly && ' • Favorites only'}
-            {sortBy !== 'score' && ` • Sorted by ${sortBy === 'duration' ? 'duration' : 'original'}`}
+            {searchTerm.trim() && ` • Matching "${searchTerm.trim()}"`}
+            {minScore > 0 && ` • Score ≥ ${minScore}%`}
+            {sortBy !== 'score' && ` • Sorted by ${sortBy === 'duration' ? 'duration' : sortBy === 'title' ? 'title' : 'original'}`}
+            {sortedFilteredClips.length > 0 && ` • Total ${formatDuration(totalDuration)}`}
             {isFiltered && (
               <button type="button" className="btn-link" onClick={resetFilters}>
                 Reset
@@ -268,17 +361,14 @@ function ClipGallery({ clips, onDownload }) {
 
       <div className="clips-grid" role="list" aria-label="Generated clips">
         <AnimatePresence>
-          {sortedFilteredClips.map((clip, index) => (
-            <motion.div
-              key={clip.clipId}
-              className="clip-card"
-              role="listitem"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3, delay: index * 0.06 }}
-              layout
-            >
+            {sortedFilteredClips.map((clip, index) => (
+              <motion.div
+                key={clip.clipId}
+                className="clip-card"
+                role="listitem"
+                {...getMotionProps(index)}
+                layout={!shouldReduceMotion}
+              >
               <img
                 src={`${API_BASE_URL}${endpoints.thumbnail(clip.clipId)}`}
                 alt={getDisplayTitle(clip, index) + ' thumbnail'}
@@ -376,10 +466,17 @@ function ClipGallery({ clips, onDownload }) {
                   </button>
                   <button
                     className="btn-download"
-                    onClick={() => onDownload(clip.clipId)}
+                    onClick={() => onDownload(clip.clipId, getDisplayTitle(clip, index))}
                     aria-label={`Download ${getDisplayTitle(clip, index)}`}
                   >
                     ⬇️ Download
+                  </button>
+                  <button
+                    className="btn-preview"
+                    onClick={() => handleOpenClip(clip.clipId)}
+                    aria-label={`Open ${getDisplayTitle(clip, index)} in a new tab`}
+                  >
+                    🧭 Open
                   </button>
                 </div>
                 {/* Share / Copy row */}
@@ -405,6 +502,20 @@ function ClipGallery({ clips, onDownload }) {
                     aria-label="Copy clip caption"
                   >
                     ✨ Caption
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={handleCopyHashtags}
+                    aria-label="Copy hashtags"
+                  >
+                    #️⃣ Hashtags
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={() => handleCopyInfo(clip, index)}
+                    aria-label="Copy clip info"
+                  >
+                    ℹ️ Info
                   </button>
                 </div>
               </div>

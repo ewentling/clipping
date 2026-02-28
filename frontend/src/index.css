@@ -54,6 +54,22 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 12px;
+  background: white;
+  color: #111;
+  padding: 8px 12px;
+  border-radius: 6px;
+  z-index: 1000;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  left: 20px;
+}
+
 .app-container {
   min-height: 100vh;
   background: var(--bg-gradient);
@@ -218,6 +234,8 @@ body {
   font-size: 0.85rem;
   color: var(--text-secondary);
   margin: 4px 0 12px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .url-status {
@@ -238,6 +256,35 @@ body {
 
 .url-count {
   opacity: 0.7;
+}
+
+.url-id {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.format-hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.format-hint ul {
+  margin-top: 6px;
+  padding-left: 16px;
+  display: grid;
+  gap: 4px;
+}
+
+.video-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.video-title-row .btn-link {
+  font-size: 0.85rem;
 }
 
 .input-actions {
@@ -506,6 +553,7 @@ body {
 .clip-actions {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .clip-timestamps {
@@ -574,6 +622,29 @@ body {
   color: var(--text-muted);
   font-size: 0.85rem;
   margin-top: 6px;
+}
+
+.step-details-list {
+  margin-top: 12px;
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  padding-left: 18px;
+}
+
+.status-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.status-copy-note {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
 }
 
 .alert {
@@ -801,7 +872,7 @@ body {
   font-weight: 600;
 }
 
-.clip-filters select, .clip-filters input[type="text"] {
+.clip-filters select, .clip-filters input[type="text"], .clip-filters input[type="search"] {
   padding: 6px 12px;
   border: 1px solid var(--border-color);
   border-radius: 6px;
@@ -809,6 +880,20 @@ body {
   background: var(--input-bg);
   color: var(--text-primary);
   cursor: pointer;
+}
+
+.clip-search {
+  min-width: 160px;
+}
+
+.clip-filters input[type="range"] {
+  accent-color: #667eea;
+}
+
+.score-value {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  min-width: 42px;
 }
 
 .favorite-toggle {
