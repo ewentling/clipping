@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { API_BASE_URL, CAPTION_HASHTAGS, endpoints } from '../config';
@@ -8,6 +9,7 @@ import PreviewModal from './PreviewModal';
 const TITLE_LIMIT = 150;
 // Delay between downloads to avoid browser blocking.
 const DOWNLOAD_DELAY_MS = 600;
+const detailStyle = { fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '10px' };
 
 function ClipGallery({ clips, onDownload }) {
   const [previewClip, setPreviewClip] = useState(null);
@@ -136,17 +138,31 @@ function ClipGallery({ clips, onDownload }) {
     setFavorites(prev => ({ ...prev, [clipId]: !prev[clipId] }));
   };
 
-  const handleCopyCaption = async (clip) => {
+  const getCaptionText = (clip) => {
     const title = localTitles[clip.clipId] || clip.title || 'Viral Clip';
-    const caption = `${title}\n\n${CAPTION_HASHTAGS}`;
+    if (clip.caption) return clip.caption;
+    return `${title}\n\n${CAPTION_HASHTAGS}`;
+  };
+
+  const getDescriptionText = (clip) => {
+    return clip.description || 'Engaging social-ready highlight.';
+  };
+
+  const getHashtags = (clip) => {
+    if (Array.isArray(clip.hashtags) && clip.hashtags.length > 0) return clip.hashtags.join(' ');
+    return CAPTION_HASHTAGS;
+  };
+
+  const handleCopyCaption = async (clip) => {
+    const caption = getCaptionText(clip);
     const copied = await copyText(caption);
     if (copied === 'success') toast.success('Caption copied!');
     else if (copied === 'denied') toast.error('Clipboard permission denied');
     else toast.error('Unable to copy caption');
   };
 
-  const handleCopyHashtags = async () => {
-    const copied = await copyText(CAPTION_HASHTAGS);
+  const handleCopyHashtags = async (clip) => {
+    const copied = await copyText(getHashtags(clip || {}));
     if (copied === 'success') toast.success('Hashtags copied!');
     else if (copied === 'denied') toast.error('Clipboard permission denied');
     else toast.error('Unable to copy hashtags');
@@ -158,7 +174,8 @@ function ClipGallery({ clips, onDownload }) {
       title,
       `Type: ${clip.type || 'clip'}`,
       `Duration: ${formatDuration(clip.duration)}`,
-      `Score: ${((clip.score || 0) * 100).toFixed(0)}%`
+      `Score: ${((clip.score || 0) * 100).toFixed(0)}%`,
+      `Description: ${getDescriptionText(clip)}`
     ].join('\n');
     const copied = await copyText(info);
     if (copied === 'success') toast.success('Clip info copied!');
@@ -166,9 +183,130 @@ function ClipGallery({ clips, onDownload }) {
     else toast.error('Unable to copy clip info');
   };
 
+  const handleCopyDescription = async (clip) => {
+    const copied = await copyText(getDescriptionText(clip));
+    if (copied === 'success') toast.success('Description copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy description');
+  };
+
+  const handleCopyMetadata = async (clip, index) => {
+    const payload = {
+      title: getDisplayTitle(clip, index),
+      caption: getCaptionText(clip),
+      description: getDescriptionText(clip),
+      hashtags: getHashtags(clip),
+      downloadUrl: `${API_BASE_URL}${endpoints.download(clip.clipId)}`,
+      thumbnailUrl: `${API_BASE_URL}${endpoints.thumbnail(clip.clipId)}`,
+      videoUrl: clip.videoUrl || ''
+    };
+    const copied = await copyText(JSON.stringify(payload, null, 2));
+    if (copied === 'success') toast.success('Metadata copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy metadata');
+  };
+
   const handleOpenClip = (clipId) => {
     const url = `${API_BASE_URL}${endpoints.download(clipId)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleDownloadCaption = async (clip) => {
+    const toastId = toast.loading('Preparing captions...');
+    try {
+      const response = await axios.get(`${API_BASE_URL}${endpoints.caption(clip.clipId)}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${clip.clipId}.srt`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Captions downloaded', { id: toastId });
+    } catch {
+      toast.error('Failed to download captions', { id: toastId });
+    }
+  };
+
+  const getFileExtensionFromContentType = (contentType) => {
+    const map = {
+      'image/svg+xml': 'svg',
+      'image/png': 'png',
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg'
+    };
+    if (map[contentType]) return map[contentType];
+    if (contentType?.includes('svg')) return 'svg';
+    if (contentType?.includes('png')) return 'png';
+    if (contentType?.includes('jpeg')) return 'jpg';
+    return 'img';
+  };
+
+  const handleDownloadThumbnail = async (clip) => {
+    const toastId = toast.loading('Preparing thumbnail...');
+    try {
+      const response = await axios.get(`${API_BASE_URL}${endpoints.thumbnail(clip.clipId)}`, { responseType: 'blob' });
+      const blob = response.data;
+      const contentType = blob.type || 'image/svg+xml';
+      const ext = getFileExtensionFromContentType(contentType);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${clip.clipId}.${ext}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Thumbnail downloaded', { id: toastId });
+    } catch {
+      toast.error('Failed to download thumbnail', { id: toastId });
+    }
+  };
+
+  const handleDownloadMetadata = async (clip, index) => {
+    const toastId = toast.loading('Preparing metadata...');
+    try {
+      const response = await axios.get(`${API_BASE_URL}${endpoints.metadata(clip.clipId)}`);
+      const blob = new Blob([JSON.stringify(response.data.clip || response.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${getDownloadFileName(clip, index)}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Metadata downloaded', { id: toastId });
+    } catch {
+      toast.error('Failed to download metadata', { id: toastId });
+    }
+  };
+
+  const handleShareLinkedIn = (clip) => {
+    const url = encodeURIComponent(`${API_BASE_URL}${endpoints.download(clip.clipId)}`);
+    const text = encodeURIComponent(getDescriptionText(clip));
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}&title=${text}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleShareReddit = (clip, index) => {
+    const url = encodeURIComponent(`${API_BASE_URL}${endpoints.download(clip.clipId)}`);
+    const title = encodeURIComponent(getDisplayTitle(clip, index));
+    window.open(`https://www.reddit.com/submit?url=${url}&title=${title}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopySocialBundle = async (clip, index) => {
+    const bundle = [
+      getDisplayTitle(clip, index),
+      getDescriptionText(clip),
+      getCaptionText(clip),
+      getHashtags(clip),
+      `${API_BASE_URL}${endpoints.download(clip.clipId)}`
+    ].join('\n\n');
+    const copied = await copyText(bundle);
+    if (copied === 'success') toast.success('Social bundle copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy social bundle');
   };
 
   const startEditTitle = (clip) => {
@@ -434,6 +572,12 @@ function ClipGallery({ clips, onDownload }) {
                     "{clip.reason}"
                   </p>
                 )}
+                <div style={{ ...detailStyle, color: 'var(--text-primary)' }}>
+                  <strong>Caption:</strong> {getCaptionText(clip)}
+                </div>
+                <div style={{ ...detailStyle, marginBottom: '12px' }}>
+                  <strong>Description:</strong> {getDescriptionText(clip)}
+                </div>
                 <div className="clip-actions">
                   <button
                     className="btn-preview"
@@ -451,10 +595,24 @@ function ClipGallery({ clips, onDownload }) {
                   </button>
                   <button
                     className="btn-preview"
+                    onClick={() => handleDownloadCaption(clip)}
+                    aria-label={`Download captions for ${getDisplayTitle(clip, index)}`}
+                  >
+                    💬 Captions
+                  </button>
+                  <button
+                    className="btn-preview"
                     onClick={() => handleOpenClip(clip.clipId)}
                     aria-label={`Open ${getDisplayTitle(clip, index)} in a new tab`}
                   >
                     🧭 Open
+                  </button>
+                  <button
+                    className="btn-preview"
+                    onClick={() => handleDownloadThumbnail(clip)}
+                    aria-label={`Download thumbnail for ${getDisplayTitle(clip, index)}`}
+                  >
+                    🖼️ Thumbnail
                   </button>
                 </div>
                 {/* Share / Copy row */}
@@ -465,6 +623,13 @@ function ClipGallery({ clips, onDownload }) {
                     aria-label="Copy download link to clipboard"
                   >
                     📋 Copy Link
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={() => handleCopySocialBundle(clip, index)}
+                    aria-label="Copy social bundle"
+                  >
+                    📦 Bundle
                   </button>
                   <button
                     className="btn-share"
@@ -483,10 +648,24 @@ function ClipGallery({ clips, onDownload }) {
                   </button>
                   <button
                     className="btn-share"
-                    onClick={handleCopyHashtags}
+                    onClick={() => handleCopyDescription(clip)}
+                    aria-label="Copy clip description"
+                  >
+                    📝 Description
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={() => handleCopyHashtags(clip)}
                     aria-label="Copy hashtags"
                   >
                     #️⃣ Hashtags
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={() => handleCopyMetadata(clip, index)}
+                    aria-label="Copy clip metadata"
+                  >
+                    🧾 Metadata
                   </button>
                   <button
                     className="btn-share"
@@ -494,6 +673,29 @@ function ClipGallery({ clips, onDownload }) {
                     aria-label="Copy clip info"
                   >
                     ℹ️ Info
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={() => handleDownloadMetadata(clip, index)}
+                    aria-label="Download metadata JSON"
+                  >
+                    💾 JSON
+                  </button>
+                  <button
+                    className="btn-share"
+                    style={{ background: '#0a66c2', color: 'white' }}
+                    onClick={() => handleShareLinkedIn(clip)}
+                    aria-label="Share to LinkedIn"
+                  >
+                    💼 LinkedIn
+                  </button>
+                  <button
+                    className="btn-share"
+                    style={{ background: '#ff4500', color: 'white' }}
+                    onClick={() => handleShareReddit(clip, index)}
+                    aria-label="Share to Reddit"
+                  >
+                    👽 Reddit
                   </button>
                 </div>
               </div>

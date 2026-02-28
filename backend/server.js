@@ -71,13 +71,70 @@ const isValidId = (id) => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test
 const demoClipFile = path.join(__dirname, 'assets', 'sample-clip.mp4');
 const clipStore = new Map(); // clipId -> clip metadata
 const jobs = new Map(); // jobId -> { status, progress, clips }
+const DEFAULT_CLIP_DURATION = 15;
+const DEFAULT_VIDEO_URL = process.env.DEMO_VIDEO_URL || 'https://example.com/demo-video';
 
 const demoClipTemplates = [
-  { title: 'High-energy opener', type: 'hook', duration: 32, score: 0.86, startTime: 12, endTime: 44, reason: 'Great hook and pacing' },
-  { title: 'Punchy quote', type: 'clip', duration: 28, score: 0.74, startTime: 95, endTime: 123, reason: 'Strong, shareable quote' },
-  { title: 'Emotional moment', type: 'clip', duration: 35, score: 0.69, startTime: 210, endTime: 245, reason: 'Audience reaction spike' },
-  { title: 'Key takeaway', type: 'clip', duration: 30, score: 0.64, startTime: 300, endTime: 330, reason: 'Clear, actionable advice' },
-  { title: 'Mic drop ending', type: 'clip', duration: 22, score: 0.81, startTime: 355, endTime: 377, reason: 'Memorable closing line' }
+  {
+    title: 'High-energy opener',
+    type: 'hook',
+    duration: 32,
+    score: 0.86,
+    startTime: 12,
+    endTime: 44,
+    reason: 'Great hook and pacing',
+    caption: 'You need to hear this opener — instant hook for any audience. #Clipnotic #ViralClips #Shorts',
+    description: 'A high-energy introduction that instantly captures attention and sets the pace for the rest of the clip.',
+    hashtags: ['#Clipnotic', '#ViralClips', '#Shorts']
+  },
+  {
+    title: 'Punchy quote',
+    type: 'clip',
+    duration: 28,
+    score: 0.74,
+    startTime: 95,
+    endTime: 123,
+    reason: 'Strong, shareable quote',
+    caption: 'Save this quote — perfect for Reels and Shorts. #Clipnotic #Shareable',
+    description: 'A concise, memorable quote that works great for social sharing and quick inspiration.',
+    hashtags: ['#Clipnotic', '#Shareable', '#Viral']
+  },
+  {
+    title: 'Emotional moment',
+    type: 'clip',
+    duration: 35,
+    score: 0.69,
+    startTime: 210,
+    endTime: 245,
+    reason: 'Audience reaction spike',
+    caption: 'The moment everyone feels — emotional and authentic. #FeelIt #Shorts',
+    description: 'An emotional highlight with strong audience reactions, ideal for engagement.',
+    hashtags: ['#FeelIt', '#Emotional', '#Shorts']
+  },
+  {
+    title: 'Key takeaway',
+    type: 'clip',
+    duration: 30,
+    score: 0.64,
+    startTime: 300,
+    endTime: 330,
+    reason: 'Clear, actionable advice',
+    caption: 'Actionable advice you can apply today. #Takeaway #Action',
+    description: 'A crisp, actionable insight that delivers immediate value to viewers.',
+    hashtags: ['#Takeaway', '#Action', '#Clipnotic']
+  },
+  {
+    title: 'Mic drop ending',
+    type: 'clip',
+    duration: 22,
+    score: 0.81,
+    startTime: 355,
+    endTime: 377,
+    reason: 'Memorable closing line',
+    caption: 'Closing with a mic drop — leave them wanting more. #MicDrop #Viral',
+    description: 'A memorable closing that reinforces the main message and drives shares.',
+    hashtags: ['#MicDrop', '#Viral', '#Closer']
+  }
 ];
 
 const escapeXml = (value) =>
@@ -92,10 +149,36 @@ const buildClipsForJob = (jobId, count) => {
   const selected = demoClipTemplates.slice(0, Math.max(1, Math.min(count, demoClipTemplates.length)));
   return selected.map((clip, idx) => {
     const clipId = `${jobId}-clip-${idx + 1}`;
-    const fullClip = { ...clip, clipId };
+    const socialBundle = `${clip.title} — ${clip.caption || ''}`.trim();
+    const fullClip = {
+      ...clip,
+      clipId,
+      caption: clip.caption,
+      description: clip.description,
+      hashtags: clip.hashtags || ['#Clipnotic', '#Shorts'],
+      thumbnailText: clip.title,
+      shareText: socialBundle,
+      videoUrl: DEFAULT_VIDEO_URL
+    };
     clipStore.set(clipId, fullClip);
     return fullClip;
   });
+};
+
+const formatSrtTime = (seconds) => {
+  const date = new Date(seconds * 1000);
+  const hh = String(date.getUTCHours()).padStart(2, '0');
+  const mm = String(date.getUTCMinutes()).padStart(2, '0');
+  const ss = String(date.getUTCSeconds()).padStart(2, '0');
+  const ms = String(date.getUTCMilliseconds()).padStart(3, '0');
+  return `${hh}:${mm}:${ss},${ms}`;
+};
+
+const calculateClipEndTime = (clip) => {
+  if (clip.endTime != null) return clip.endTime;
+  const start = clip.startTime || 0;
+  const duration = clip.duration || DEFAULT_CLIP_DURATION;
+  return start + duration;
 };
 
 app.get('/api/health', (req, res) => {
@@ -186,6 +269,7 @@ app.get('/api/clips/thumbnail/:clipId', (req, res) => {
   if (!clipStore.has(clipId)) {
     return res.status(404).json({ success: false, error: 'Clip not found' });
   }
+  const clip = clipStore.get(clipId);
   const svg = `
     <svg width="640" height="360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Clip thumbnail">
       <defs>
@@ -195,8 +279,8 @@ app.get('/api/clips/thumbnail/:clipId', (req, res) => {
         </linearGradient>
       </defs>
       <rect width="640" height="360" rx="24" fill="url(#grad)" />
-      <text x="50%" y="48%" dominant-baseline="middle" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="32" fill="#fff" font-weight="700">Clip Preview</text>
-      <text x="50%" y="60%" dominant-baseline="middle" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="18" fill="#f1f5f9">${escapeXml(clipId)}</text>
+      <text x="50%" y="46%" dominant-baseline="middle" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="30" fill="#fff" font-weight="700">${escapeXml(clip.thumbnailText || 'Clip')}</text>
+      <text x="50%" y="58%" dominant-baseline="middle" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="18" fill="#f1f5f9">${escapeXml(clipId)}</text>
     </svg>
   `;
   res.type('image/svg+xml').send(svg.trim());
@@ -204,6 +288,46 @@ app.get('/api/clips/thumbnail/:clipId', (req, res) => {
 
 app.get('/api/clips/list', (req, res) => {
   res.json({ success: true, clips: Array.from(clipStore.values()) });
+});
+
+app.get('/api/clips/metadata/:clipId', (req, res) => {
+  const { clipId } = req.params;
+  if (!isValidId(clipId)) {
+    return res.status(400).json({ success: false, error: 'Invalid clip ID' });
+  }
+  const clip = clipStore.get(clipId);
+  if (!clip) {
+    return res.status(404).json({ success: false, error: 'Clip not found' });
+  }
+  const payload = {
+    ...clip,
+    downloadUrl: `/api/clips/download/${clipId}`,
+    captionUrl: `/api/clips/caption/${clipId}`,
+    thumbnailUrl: `/api/clips/thumbnail/${clipId}`
+  };
+  res.json({ success: true, clip: payload });
+});
+
+app.get('/api/clips/caption/:clipId', (req, res) => {
+  const { clipId } = req.params;
+  if (!isValidId(clipId)) {
+    return res.status(400).json({ success: false, error: 'Invalid clip ID' });
+  }
+  const clip = clipStore.get(clipId);
+  if (!clip) {
+    return res.status(404).json({ success: false, error: 'Clip not found' });
+  }
+  const start = formatSrtTime(clip.startTime || 0);
+  const end = formatSrtTime(calculateClipEndTime(clip));
+  const lines = [
+    '1',
+    `${start} --> ${end}`,
+    clip.caption || clip.title || 'Clip',
+    (clip.hashtags || []).join(' ')
+  ].join('\n');
+  res.setHeader('Content-Type', 'application/x-subrip');
+  res.setHeader('Content-Disposition', `attachment; filename="${clipId}.srt"`);
+  res.send(lines);
 });
 
 app.get('/api/videos/info', async (req, res) => {
