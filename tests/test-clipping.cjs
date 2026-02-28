@@ -6,7 +6,14 @@ async function httpGet(url) {
     const req = http.get(url, (res) => {
       let data = '';
       res.on('data', chunk => { data += chunk; });
-      res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(data) }));
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          resolve({ status: res.statusCode, body: parsed });
+        } catch {
+          resolve({ status: res.statusCode, body: data });
+        }
+      });
     });
     req.on('error', reject);
     req.setTimeout(3000, () => { req.destroy(); reject(new Error('timeout')); });
