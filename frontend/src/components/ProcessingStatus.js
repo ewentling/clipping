@@ -1,7 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { copyText } from '../utils/clipboard';
 
-function ProcessingStatus({ jobId, statusMessage }) {
+const SECONDS_PER_MINUTE = 60;
+const MILLISECONDS_PER_SECOND = 1000;
+// Wait for a small progress threshold (percent) before estimating time remaining.
+const MIN_PROGRESS_FOR_TIME_ESTIMATE = 5;
+
+function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   const [progress, setProgress] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [copyNote, setCopyNote] = useState('');
+  const [showAllSteps, setShowAllSteps] = useState(false);
+  const startTimeRef = useRef(performance.now());
 
   const steps = [
     { name: 'Analyzing', threshold: 10, description: "We're analyzing the video structure and identifying potential viral moments using AI." },
@@ -16,11 +27,45 @@ function ProcessingStatus({ jobId, statusMessage }) {
       const match = statusMessage.match(/(\d+)%/);
       if (match) setProgress(parseInt(match[1], 10));
       else if (statusMessage.toLowerCase().includes('completed')) setProgress(100);
+      setLastUpdated(new Date());
     }
   }, [statusMessage]);
 
+  useEffect(() => {
+    setElapsedSeconds(0);
+    startTimeRef.current = performance.now();
+    const timer = setInterval(() => {
+      const elapsed = Math.floor((performance.now() - startTimeRef.current) / MILLISECONDS_PER_SECOND);
+      setElapsedSeconds(elapsed);
+    }, MILLISECONDS_PER_SECOND);
+    return () => clearInterval(timer);
+  }, [jobId]);
+
+  const formatElapsed = (seconds) => {
+    const mins = Math.floor(seconds / SECONDS_PER_MINUTE);
+    const secs = seconds % SECONDS_PER_MINUTE;
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  };
+
+  const remainingSeconds = progress >= MIN_PROGRESS_FOR_TIME_ESTIMATE && progress < 100
+    ? Math.max(0, Math.round((elapsedSeconds / progress) * (100 - progress)))
+    : null;
+
+  const formatTime = (time) => {
+    if (!time) return '--:--';
+    return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleCopyStatus = async () => {
+    const statusText = statusMessage || 'Starting...';
+    const copied = await copyText(statusText);
+    setCopyNote(copied === 'success' ? 'Copied!' : copied === 'denied' ? 'Permission denied' : 'Copy failed');
+    setTimeout(() => setCopyNote(''), 1500);
+  };
+
   const activeStep = steps.findIndex(s => progress <= s.threshold);
   const currentStep = activeStep === -1 ? steps.length - 1 : activeStep;
+  const nextStep = currentStep < steps.length - 1 ? steps[currentStep + 1] : null;
 
   return (
     <div className="card" role="status" aria-live="polite" aria-label="Processing status">
@@ -42,6 +87,15 @@ function ProcessingStatus({ jobId, statusMessage }) {
           <div className="progress-fill" style={{ width: `${progress}%` }} />
         </div>
         <div className="status-text">{statusMessage || 'Starting...'}</div>
+        <div className="status-meta">
+          Step {currentStep + 1} of {steps.length}: {steps[currentStep]?.name}
+          {nextStep && ` • Next: ${nextStep.name}`} • Progress: {progress}%
+          {` • Elapsed: ${formatElapsed(elapsedSeconds)}`}
+          {remainingSeconds != null && ` • Remaining: ${formatElapsed(remainingSeconds)}`}
+        </div>
+        <div className="status-meta">
+          Last update: {formatTime(lastUpdated)}
+        </div>
       </div>
 
       {/* Steps with connecting lines */}
@@ -77,6 +131,18 @@ function ProcessingStatus({ jobId, statusMessage }) {
         <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
           {steps[currentStep]?.description}
         </p>
+        <button type="button" className="btn-link" onClick={() => setShowAllSteps(s => !s)}>
+          {showAllSteps ? 'Hide all steps' : 'Show all steps'}
+        </button>
+        {showAllSteps && (
+          <ul className="step-details-list">
+            {steps.map(step => (
+              <li key={step.name}>
+                <strong>{step.name}:</strong> {step.description}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div style={{ marginTop: '20px', padding: '15px', background: 'var(--note-bg)', borderRadius: '10px', borderLeft: '4px solid var(--note-border)' }}>
@@ -84,6 +150,27 @@ function ProcessingStatus({ jobId, statusMessage }) {
           <strong>⚠️ Note:</strong> Processing time depends on video length. A 10-minute video typically takes 2-3 minutes to process.
         </p>
       </div>
+      <div className="status-actions">
+        <button className="btn btn-secondary" type="button" onClick={handleCopyStatus} aria-label="Copy status message">
+          📋 Copy Status
+        </button>
+        {copyNote && <span className="status-copy-note" aria-live="polite">{copyNote}</span>}
+      </div>
+
+      {onCancel && (
+        <div style={{ marginTop: '16px', textAlign: 'center' }}>
+          <button className="btn btn-secondary" onClick={onCancel} aria-label="Stop processing status updates">
+            ✕ Stop Status Updates
+          </button>
+        </div>
+      )}
+      {onJumpToGallery && progress >= 50 && (
+        <div style={{ marginTop: '10px', textAlign: 'center' }}>
+          <button className="btn btn-secondary" onClick={onJumpToGallery} aria-label="Jump to clip gallery">
+            👀 Jump to Gallery
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -68,4 +68,4 @@ All modules read from `src/core/config.js`.
 
 ---
 
-**Built by GravityClaw** 🚀
+**Built by Clipnotic** 🚀

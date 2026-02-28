@@ -1,34 +1,77 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { API_BASE_URL, endpoints } from '../config';
+import { API_BASE_URL, CAPTION_HASHTAGS, endpoints } from '../config';
+import { copyText } from '../utils/clipboard';
 import PreviewModal from './PreviewModal';
+
+const TITLE_LIMIT = 150;
+// Delay between downloads to avoid browser blocking.
+const DOWNLOAD_DELAY_MS = 600;
 
 function ClipGallery({ clips, onDownload }) {
   const [previewClip, setPreviewClip] = useState(null);
   const [sortBy, setSortBy] = useState('score');
   const [filterType, setFilterType] = useState('all');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [minScore, setMinScore] = useState(0);
   const [editingTitle, setEditingTitle] = useState(null); // clipId being edited
   const [editTitleValue, setEditTitleValue] = useState('');
   const [localTitles, setLocalTitles] = useState({});
-  const [batchProgress, setBatchProgress] = useState(null); // { done, total }
+  const [batchProgress, setBatchProgress] = useState(null); // { done, total, currentClip }
+  const shouldReduceMotion = useReducedMotion();
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('clipFavorites') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('clipFavorites', JSON.stringify(favorites));
+  }, [favorites]);
 
   const sortedFilteredClips = useMemo(() => {
     let result = [...clips];
+    if (showFavoritesOnly) {
+      result = result.filter(c => favorites[c.clipId]);
+    }
     if (filterType !== 'all') {
       result = result.filter(c => (c.type || 'clip') === filterType);
+    }
+    if (searchTerm.trim()) {
+      const normalized = searchTerm.trim().toLowerCase();
+      result = result.filter(c => {
+        const title = (localTitles[c.clipId] || c.title || '').toLowerCase();
+        return title.includes(normalized);
+      });
+    }
+    if (minScore > 0) {
+      result = result.filter(c => ((c.score || 0) * 100) >= minScore);
     }
     if (sortBy === 'score') {
       result.sort((a, b) => (b.score || 0) - (a.score || 0));
     } else if (sortBy === 'duration') {
       result.sort((a, b) => (parseFloat(a.duration) || 0) - (parseFloat(b.duration) || 0));
+    } else if (sortBy === 'title') {
+      result.sort((a, b) => {
+        const titleA = (localTitles[a.clipId] || a.title || '').toLowerCase();
+        const titleB = (localTitles[b.clipId] || b.title || '').toLowerCase();
+        return titleA.localeCompare(titleB);
+      });
     }
     return result;
-  }, [clips, sortBy, filterType]);
+  }, [clips, sortBy, filterType, favorites, showFavoritesOnly, searchTerm, minScore, localTitles]);
 
   const uniqueTypes = useMemo(() => {
     return [...new Set(clips.map(c => c.type || 'clip'))];
   }, [clips]);
+
+  const totalDuration = useMemo(() => {
+    return sortedFilteredClips.reduce((sum, clip) => sum + (parseFloat(clip.duration) || 0), 0);
+  }, [sortedFilteredClips]);
 
   const formatDuration = (seconds) => {
     const secs = parseFloat(seconds);
@@ -63,28 +106,69 @@ function ClipGallery({ clips, onDownload }) {
     return '#6b7280';
   };
 
+  const getConfidenceLabel = (score) => {
+    if (score >= 0.8) return { label: 'High', icon: '✓' };
+    if (score >= 0.6) return { label: 'Medium', icon: '◐' };
+    return { label: 'Exploratory', icon: '◇' };
+  };
+
+  const getScoreTooltip = (score) => {
+    if (score >= 0.8) return 'High viral potential';
+    if (score >= 0.6) return 'Good engagement';
+    return 'Exploratory pick';
+  };
+
   const handleCopyLink = async (clipId) => {
     const url = `${API_BASE_URL}${endpoints.download(clipId)}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success('Link copied to clipboard!');
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = url;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      toast.success('Link copied!');
-    }
+    const copied = await copyText(url);
+    if (copied === 'success') toast.success('Link copied to clipboard!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy link');
   };
 
   const handleShareTwitter = (clip) => {
     const title = localTitles[clip.clipId] || clip.title || 'Viral Clip';
     const text = encodeURIComponent(`Check out this viral clip: ${title} `);
     window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const toggleFavorite = (clipId) => {
+    setFavorites(prev => ({ ...prev, [clipId]: !prev[clipId] }));
+  };
+
+  const handleCopyCaption = async (clip) => {
+    const title = localTitles[clip.clipId] || clip.title || 'Viral Clip';
+    const caption = `${title}\n\n${CAPTION_HASHTAGS}`;
+    const copied = await copyText(caption);
+    if (copied === 'success') toast.success('Caption copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy caption');
+  };
+
+  const handleCopyHashtags = async () => {
+    const copied = await copyText(CAPTION_HASHTAGS);
+    if (copied === 'success') toast.success('Hashtags copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy hashtags');
+  };
+
+  const handleCopyInfo = async (clip, index) => {
+    const title = getDisplayTitle(clip, index);
+    const info = [
+      title,
+      `Type: ${clip.type || 'clip'}`,
+      `Duration: ${formatDuration(clip.duration)}`,
+      `Score: ${((clip.score || 0) * 100).toFixed(0)}%`
+    ].join('\n');
+    const copied = await copyText(info);
+    if (copied === 'success') toast.success('Clip info copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
+    else toast.error('Unable to copy clip info');
+  };
+
+  const handleOpenClip = (clipId) => {
+    const url = `${API_BASE_URL}${endpoints.download(clipId)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const startEditTitle = (clip) => {
@@ -102,12 +186,15 @@ function ClipGallery({ clips, onDownload }) {
 
   const handleBatchDownload = async () => {
     const total = clips.length;
-    setBatchProgress({ done: 0, total });
+    setBatchProgress({ done: 0, total, currentClip: null });
     for (let i = 0; i < clips.length; i++) {
-      await onDownload(clips[i].clipId);
-      setBatchProgress({ done: i + 1, total });
+      const clipTitle = getDisplayTitle(clips[i], i);
+      const fileName = getDownloadFileName(clips[i], i);
+      setBatchProgress({ done: i, total, currentClip: clipTitle });
+      await onDownload(clips[i].clipId, fileName);
+      setBatchProgress({ done: i + 1, total, currentClip: clipTitle });
       // Small delay between downloads to avoid browser blocking
-      if (i < clips.length - 1) await new Promise(r => setTimeout(r, 600));
+      if (i < clips.length - 1) await new Promise(r => setTimeout(r, DOWNLOAD_DELAY_MS));
     }
     setBatchProgress(null);
     toast.success(`Downloaded all ${total} clips!`);
@@ -116,8 +203,38 @@ function ClipGallery({ clips, onDownload }) {
   const getDisplayTitle = (clip, index) =>
     localTitles[clip.clipId] || clip.title || `Viral Clip #${index + 1}`;
 
+  const getDownloadFileName = (clip, index) => {
+    const displayTitle = getDisplayTitle(clip, index);
+    return displayTitle.trim() || clip.clipId;
+  };
+
+  const getMotionProps = useCallback((index) => (
+    shouldReduceMotion
+      ? {
+        initial: { opacity: 1, y: 0 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 1, scale: 1 },
+        transition: { duration: 0 }
+      }
+      : {
+        initial: { opacity: 0, y: 20 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, scale: 0.95 },
+        transition: { duration: 0.3, delay: index * 0.06 }
+      }
+  ), [shouldReduceMotion]);
+
+  const isFiltered = filterType !== 'all' || sortBy !== 'score' || showFavoritesOnly || searchTerm.trim() || minScore > 0;
+  const resetFilters = () => {
+    setFilterType('all');
+    setSortBy('score');
+    setShowFavoritesOnly(false);
+    setSearchTerm('');
+    setMinScore(0);
+  };
+
   return (
-    <div className="card">
+    <div className="card" id="clip-gallery">
       {previewClip && (
         <PreviewModal clip={previewClip} onClose={() => setPreviewClip(null)} />
       )}
@@ -128,7 +245,8 @@ function ClipGallery({ clips, onDownload }) {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           {batchProgress && (
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Downloading {batchProgress.done}/{batchProgress.total}...
+              Downloading {batchProgress.done}/{batchProgress.total}
+              {batchProgress.currentClip ? ` • ${batchProgress.currentClip}...` : '...'}
             </span>
           )}
           <button
@@ -136,6 +254,7 @@ function ClipGallery({ clips, onDownload }) {
             onClick={handleBatchDownload}
             disabled={!!batchProgress}
             aria-label={batchProgress ? `Downloading ${batchProgress.done} of ${batchProgress.total}` : 'Download all clips'}
+            data-action="download-all"
           >
             {batchProgress
               ? <><span className="loading-spinner" aria-hidden="true" />{batchProgress.done}/{batchProgress.total}</>
@@ -155,6 +274,7 @@ function ClipGallery({ clips, onDownload }) {
         >
           <option value="score">Viral Score ↓</option>
           <option value="duration">Duration ↑</option>
+          <option value="title">Title A-Z</option>
           <option value="index">Original Order</option>
         </select>
         <label htmlFor="filter-select" style={{ marginLeft: '10px' }}>Type:</label>
@@ -169,26 +289,64 @@ function ClipGallery({ clips, onDownload }) {
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
-        {filterType !== 'all' && (
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+        <label htmlFor="search-input" style={{ marginLeft: '10px' }}>Search:</label>
+        <input
+          id="search-input"
+          className="clip-search"
+          type="search"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          placeholder="Search titles"
+          aria-label="Search clips by title"
+        />
+        <label htmlFor="score-range" style={{ marginLeft: '10px' }}>Min Score:</label>
+        <input
+          id="score-range"
+          type="range"
+          min="0"
+          max="100"
+          step="5"
+          value={minScore}
+          onChange={e => setMinScore(Number(e.target.value))}
+          aria-label="Minimum viral score"
+        />
+        <span className="score-value" aria-hidden="true">{minScore}%</span>
+        <label className="favorite-toggle">
+          <input
+            type="checkbox"
+            checked={showFavoritesOnly}
+            onChange={(e) => setShowFavoritesOnly(e.target.checked)}
+          />
+          ⭐ Favorites
+        </label>
+        {isFiltered && (
+          <span className="filter-status">
             Showing {sortedFilteredClips.length} of {clips.length}
+            {filterType !== 'all' && ` • Filtered by ${filterType}`}
+            {showFavoritesOnly && ' • Favorites only'}
+            {searchTerm.trim() && ` • Matching "${searchTerm.trim()}"`}
+            {minScore > 0 && ` • Score ≥ ${minScore}%`}
+            {sortBy !== 'score' && ` • Sorted by ${sortBy === 'duration' ? 'duration' : sortBy === 'title' ? 'title' : 'original'}`}
+            {sortedFilteredClips.length > 0 && ` • Total ${formatDuration(totalDuration)}`}
+            {isFiltered && (
+              <button type="button" className="btn-link" onClick={resetFilters}>
+                Reset
+              </button>
+            )}
           </span>
         )}
       </div>
 
       <div className="clips-grid" role="list" aria-label="Generated clips">
         <AnimatePresence>
-          {sortedFilteredClips.map((clip, index) => (
-            <motion.div
-              key={clip.clipId}
-              className="clip-card"
-              role="listitem"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3, delay: index * 0.06 }}
-              layout
-            >
+            {sortedFilteredClips.map((clip, index) => (
+              <motion.div
+                key={clip.clipId}
+                className="clip-card"
+                role="listitem"
+                {...getMotionProps(index)}
+                layout={!shouldReduceMotion}
+              >
               <img
                 src={`${API_BASE_URL}${endpoints.thumbnail(clip.clipId)}`}
                 alt={getDisplayTitle(clip, index) + ' thumbnail'}
@@ -198,35 +356,54 @@ function ClipGallery({ clips, onDownload }) {
               <div className="clip-info">
                 {/* Inline editable title */}
                 {editingTitle === clip.clipId ? (
-                  <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
-                    <input
-                      type="text"
-                      value={editTitleValue}
-                      onChange={e => setEditTitleValue(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') saveTitle(clip.clipId);
-                        if (e.key === 'Escape') setEditingTitle(null);
-                      }}
-                      autoFocus
-                      aria-label="Edit clip title"
-                      style={{ flex: 1, padding: '4px 8px', border: '1px solid #667eea', borderRadius: '4px', fontSize: '0.9rem', background: 'var(--input-bg)', color: 'var(--text-primary)' }}
-                    />
-                    <button onClick={() => saveTitle(clip.clipId)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: '#667eea', color: 'white', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Save title">✓</button>
-                    <button onClick={() => setEditingTitle(null)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: 'var(--btn-secondary-bg)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Cancel edit">✕</button>
+                  <div style={{ marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <input
+                        type="text"
+                        value={editTitleValue}
+                        maxLength={TITLE_LIMIT}
+                        onChange={e => setEditTitleValue(e.target.value)}
+                        onFocus={(e) => e.target.select()}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveTitle(clip.clipId);
+                          if (e.key === 'Escape') setEditingTitle(null);
+                        }}
+                        autoFocus
+                        aria-label={`Edit clip title (max ${TITLE_LIMIT} characters)`}
+                        aria-describedby={`title-count-${clip.clipId}`}
+                        style={{ flex: 1, padding: '4px 8px', border: '1px solid #667eea', borderRadius: '4px', fontSize: '0.9rem', background: 'var(--input-bg)', color: 'var(--text-primary)' }}
+                      />
+                      <button onClick={() => saveTitle(clip.clipId)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: '#667eea', color: 'white', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Save title">✓</button>
+                      <button onClick={() => setEditingTitle(null)} style={{ padding: '4px 8px', border: 'none', borderRadius: '4px', background: 'var(--btn-secondary-bg)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.8rem' }} aria-label="Cancel edit">✕</button>
+                    </div>
+                    <div id={`title-count-${clip.clipId}`} className="title-counter" aria-live="polite">
+                      {editTitleValue.length}/{TITLE_LIMIT} characters
+                    </div>
                   </div>
                 ) : (
-                  <h4
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                    onClick={() => startEditTitle(clip)}
-                    title="Click to edit title"
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={e => e.key === 'Enter' && startEditTitle(clip)}
-                    aria-label={`Edit title: ${getDisplayTitle(clip, index)}`}
-                  >
-                    {getDisplayTitle(clip, index)}
-                    <span style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 400 }}>✏️</span>
-                  </h4>
+                  <div className="clip-title-row">
+                    <h4
+                      style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      onClick={() => startEditTitle(clip)}
+                      title="Click to edit title"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={e => e.key === 'Enter' && startEditTitle(clip)}
+                      aria-label={`Edit title: ${getDisplayTitle(clip, index)}`}
+                    >
+                      {getDisplayTitle(clip, index)}
+                      <span style={{ fontSize: '0.7rem', opacity: 0.5, fontWeight: 400 }}>✏️</span>
+                    </h4>
+                    <button
+                      type="button"
+                      className="btn-favorite"
+                      onClick={() => toggleFavorite(clip.clipId)}
+                      aria-label={favorites[clip.clipId] ? 'Remove from favorites' : 'Add to favorites'}
+                      aria-pressed={!!favorites[clip.clipId]}
+                    >
+                      {favorites[clip.clipId] ? '⭐' : '☆'}
+                    </button>
+                  </div>
                 )}
                 <div className="clip-meta">
                   <span aria-label={`Type: ${clip.type || 'clip'}, Duration: ${formatDuration(clip.duration)}`}>
@@ -236,8 +413,13 @@ function ClipGallery({ clips, onDownload }) {
                     className="clip-score"
                     style={{ background: getViralScoreColor(clip.score || 0) }}
                     aria-label={`Viral score: ${((clip.score || 0) * 100).toFixed(0)}%`}
+                    data-tooltip={getScoreTooltip(clip.score || 0)}
+                    tabIndex={0}
                   >
                     {((clip.score || 0) * 100).toFixed(0)}% Viral
+                  </span>
+                  <span className="clip-confidence">
+                    {getConfidenceLabel(clip.score || 0).icon} {getConfidenceLabel(clip.score || 0).label}
                   </span>
                 </div>
                 {/* Timestamps */}
@@ -262,10 +444,17 @@ function ClipGallery({ clips, onDownload }) {
                   </button>
                   <button
                     className="btn-download"
-                    onClick={() => onDownload(clip.clipId)}
+                    onClick={() => onDownload(clip.clipId, getDownloadFileName(clip, index))}
                     aria-label={`Download ${getDisplayTitle(clip, index)}`}
                   >
                     ⬇️ Download
+                  </button>
+                  <button
+                    className="btn-preview"
+                    onClick={() => handleOpenClip(clip.clipId)}
+                    aria-label={`Open ${getDisplayTitle(clip, index)} in a new tab`}
+                  >
+                    🧭 Open
                   </button>
                 </div>
                 {/* Share / Copy row */}
@@ -284,6 +473,27 @@ function ClipGallery({ clips, onDownload }) {
                     aria-label="Share to Twitter/X"
                   >
                     🐦 Tweet
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={() => handleCopyCaption(clip)}
+                    aria-label="Copy clip caption"
+                  >
+                    ✨ Caption
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={handleCopyHashtags}
+                    aria-label="Copy hashtags"
+                  >
+                    #️⃣ Hashtags
+                  </button>
+                  <button
+                    className="btn-share"
+                    onClick={() => handleCopyInfo(clip, index)}
+                    aria-label="Copy clip info"
+                  >
+                    ℹ️ Info
                   </button>
                 </div>
               </div>

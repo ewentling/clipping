@@ -7,6 +7,15 @@ import ClipGallery from './components/ClipGallery';
 import ProcessingStatus from './components/ProcessingStatus';
 import ClipSkeleton from './components/ClipSkeleton';
 
+// Keep filenames short to avoid OS/path length issues.
+const MAX_FILENAME_LENGTH = 60;
+const MIN_PRINTABLE_ASCII = 32;
+const RESERVED_FILENAME_WORDS = new Set([
+  'CON', 'PRN', 'AUX', 'NUL',
+  'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
+  'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
+]);
+
 function App() {
   const [currentJob, setCurrentJob] = useState(null);
   const [videoInfo, setVideoInfo] = useState(null);
@@ -22,6 +31,13 @@ function App() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [retryFn, setRetryFn] = useState(null);
+  const [recentUrlCount, setRecentUrlCount] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('recentVideoUrls') || '[]').length;
+    } catch {
+      return 0;
+    }
+  });
   const pollRef = useRef(null);
   const clipsRef = useRef(null);
 
@@ -37,6 +53,10 @@ function App() {
       if (e.key === '?' && !e.target.matches('input, textarea, select')) {
         setShowHelp(prev => !prev);
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && !e.target.matches('input, textarea, select') && clips.length > 0) {
+        e.preventDefault();
+        document.querySelector('[data-action="download-all"]')?.click();
+      }
       if (e.key === 'Escape') {
         setShowHelp(false);
         setShowConfirm(false);
@@ -44,7 +64,7 @@ function App() {
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, []);
+  }, [clips.length]);
 
   useEffect(() => {
     checkApiHealth();
@@ -90,6 +110,7 @@ function App() {
       setVideoInfo(analyzeResponse.data.videoInfo);
       setStatusMessage('Video analyzed successfully!');
       toast.success('Video analyzed successfully!', { id: toastId });
+      setIsProcessing(false);
       return analyzeResponse.data;
     } catch (err) {
       const msg = err.response?.data?.error || err.message;
@@ -172,14 +193,33 @@ function App() {
     }, 600000);
   }, []);
 
-  const handleDownload = async (clipId) => {
+  const sanitizeFileName = (name) => {
+    if (!name) return '';
+    let safeName = name
+      // Remove characters invalid in Windows/Unix filenames.
+      .replace(/[<>:"/\\|?*]/g, '')
+      .replace(/\s+/g, ' ')
+      .replace(/^\.+|\.+$/g, '')
+      .trim();
+    safeName = Array.from(safeName).filter((char) => char.charCodeAt(0) >= MIN_PRINTABLE_ASCII).join('');
+    safeName = safeName.trim();
+    if (!safeName) return '';
+    const baseName = safeName.split('.')[0];
+    if (RESERVED_FILENAME_WORDS.has(baseName.toUpperCase())) {
+      safeName = `${safeName}-clip`;
+    }
+    return safeName.slice(0, MAX_FILENAME_LENGTH);
+  };
+
+  const handleDownload = async (clipId, fileName) => {
     const toastId = toast.loading('Preparing download...');
     try {
       const response = await axios.get(`${API_BASE_URL}${endpoints.download(clipId)}`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${clipId}.mp4`);
+      const safeName = sanitizeFileName(fileName) || clipId;
+      link.setAttribute('download', `${safeName}.mp4`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -188,6 +228,17 @@ function App() {
     } catch {
       toast.error('Failed to download clip', { id: toastId });
     }
+  };
+
+  const handleCancel = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setCurrentJob(null);
+    setIsProcessing(false);
+    setStatusMessage('');
+    toast('Stopped status updates. Processing continues in the background.');
   };
 
   const handleClearClips = () => {
@@ -208,6 +259,7 @@ function App() {
 
   return (
     <div className="app-container">
+      <a href="#clip-gallery" className="skip-link">Skip to clip gallery</a>
       <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
       <header className="header">
         <div className="header-status" aria-live="polite" aria-label="API status">
@@ -215,7 +267,7 @@ function App() {
           {apiOnline === null ? 'Connecting...' : apiOnline ? 'API Online' : 'API Offline'}
         </div>
         <h1>
-          🎬 GravityClaw
+          🎬 Clipnotic
           {clips.length > 0 && (
             <span style={{ fontSize: '1rem', background: '#10b981', color: 'white', borderRadius: '20px', padding: '2px 10px', marginLeft: '12px', fontWeight: 600, verticalAlign: 'middle' }} aria-label={`${clips.length} clips generated`}>
               {clips.length} clips
@@ -223,13 +275,29 @@ function App() {
           )}
         </h1>
         <p>AI-Powered Viral Video Clipping - Turn long videos into shareable clips</p>
-        <button
-          className="dark-mode-btn"
-          onClick={() => setDarkMode(d => !d)}
-          aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {darkMode ? '☀️ Light' : '🌙 Dark'}
-        </button>
+        <div className="header-actions" role="group" aria-label="Header actions">
+          <button
+            className="dark-mode-btn"
+            onClick={() => setDarkMode(d => !d)}
+            aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {darkMode ? '☀️ Light' : '🌙 Dark'}
+          </button>
+          <button
+            className="dark-mode-btn"
+            onClick={handleClearClips}
+            aria-label="Clear all clips"
+          >
+            🗑️ Clear
+          </button>
+          <button
+            className="dark-mode-btn"
+            onClick={() => setShowHelp(h => !h)}
+            aria-label="Show keyboard shortcuts"
+          >
+            ⌨️ Help
+          </button>
+        </div>
       </header>
       <main className="main-content" role="main">
         {error && (
@@ -258,9 +326,15 @@ function App() {
           videoInfo={videoInfo}
           isProcessing={isProcessing}
           onClear={handleClearClips}
+          onRecentUpdate={setRecentUrlCount}
         />
         {currentJob && (
-          <ProcessingStatus jobId={currentJob.id} statusMessage={statusMessage} />
+          <ProcessingStatus
+            jobId={currentJob.id}
+            statusMessage={statusMessage}
+            onCancel={handleCancel}
+            onJumpToGallery={() => clipsRef.current?.scrollIntoView({ behavior: 'smooth' })}
+          />
         )}
         <div ref={clipsRef}>
           {isLoadingClips && <ClipSkeleton count={3} />}
@@ -272,7 +346,11 @@ function App() {
           <div className="empty-state">
             <div className="empty-state-icon">🎬</div>
             <h3>Ready to create viral clips?</h3>
-            <p>Paste any YouTube video URL above and our AI will find the best moments</p>
+            {recentUrlCount > 0 ? (
+              <p>You have {recentUrlCount} recent video{recentUrlCount !== 1 ? 's' : ''}. Pick one above to generate clips in a few minutes.</p>
+            ) : (
+              <p>Paste any YouTube video URL above and our AI will find the best moments</p>
+            )}
             <div style={{ marginTop: '20px', display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               {[
                 { label: '🎯 AI Detection', desc: 'Finds viral moments automatically' },
@@ -322,6 +400,10 @@ function App() {
             <div className="shortcut-row">
               <span className="shortcut-key">Space</span>
               <span className="shortcut-desc">Play/Pause video preview</span>
+            </div>
+            <div className="shortcut-row">
+              <span className="shortcut-key">Ctrl/⌘ + D</span>
+              <span className="shortcut-desc">Download all clips</span>
             </div>
             <div style={{ marginTop: '20px', textAlign: 'right' }}>
               <button className="btn btn-secondary" onClick={() => setShowHelp(false)}>Close</button>

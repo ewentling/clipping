@@ -1,5 +1,5 @@
 {
-  "name": "gravity-claw-clipping",
+  "name": "clipnotic-clipping",
   "version": "1.0.0",
   "description": "SAAS application for creating viral video clips from YouTube videos",
   "main": "src/index.js",

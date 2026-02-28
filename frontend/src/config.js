@@ -1,6 +1,8 @@
 const REACT_APP_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3230';
 
 export const API_BASE_URL = REACT_APP_API_URL;
+export const CAPTION_HASHTAGS = '#Clipnotic #ViralClips #Shorts';
+export const EXAMPLE_VIDEO_URL = 'https://www.youtube.com/watch?v=aqz-KE-bpKQ';
 
 export const endpoints = {
   health: '/api/health',

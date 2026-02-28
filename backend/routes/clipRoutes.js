@@ -24,7 +24,7 @@ router.post('/analyze', async (req, res) => {
       uploader: 'Channel',
       duration: 300,
       viewCount: 50000,
-      description: 'This is a sample video analyzed by GravityClaw.',
+      description: 'This is a sample video analyzed by Clipnotic.',
       tags: ['viral', 'clips', 'shorts'],
     };
 
