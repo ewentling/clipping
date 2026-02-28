@@ -166,11 +166,13 @@ const buildClipsForJob = (jobId, count) => {
 };
 
 const formatSrtTime = (seconds) => {
-  const date = new Date(seconds * 1000);
-  const hh = String(date.getUTCHours()).padStart(2, '0');
-  const mm = String(date.getUTCMinutes()).padStart(2, '0');
-  const ss = String(date.getUTCSeconds()).padStart(2, '0');
-  const ms = String(date.getUTCMilliseconds()).padStart(3, '0');
+  const totalMs = Math.max(0, Math.floor(seconds * 1000));
+  const ms = String(totalMs % 1000).padStart(3, '0');
+  const totalSeconds = Math.floor(totalMs / 1000);
+  const ss = String(totalSeconds % 60).padStart(2, '0');
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const mm = String(totalMinutes % 60).padStart(2, '0');
+  const hh = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
   return `${hh}:${mm}:${ss},${ms}`;
 };
 
@@ -323,7 +325,8 @@ app.get('/api/clips/caption/:clipId', (req, res) => {
     '1',
     `${start} --> ${end}`,
     clip.caption || clip.title || 'Clip',
-    (clip.hashtags || []).join(' ')
+    (clip.hashtags || []).join(' '),
+    ''
   ].join('\n');
   res.setHeader('Content-Type', 'application/x-subrip');
   res.setHeader('Content-Disposition', `attachment; filename="${clipId}.srt"`);

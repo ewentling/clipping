@@ -230,16 +230,17 @@ function ClipGallery({ clips, onDownload }) {
   };
 
   const getFileExtensionFromContentType = (contentType) => {
-    const map = {
+    const lookup = {
       'image/svg+xml': 'svg',
       'image/png': 'png',
       'image/jpeg': 'jpg',
       'image/jpg': 'jpg'
     };
-    if (map[contentType]) return map[contentType];
-    if (contentType?.includes('svg')) return 'svg';
-    if (contentType?.includes('png')) return 'png';
-    if (contentType?.includes('jpeg')) return 'jpg';
+    if (lookup[contentType]) return lookup[contentType];
+    const lowered = (contentType || '').toLowerCase();
+    if (lowered.includes('svg')) return 'svg';
+    if (lowered.includes('png')) return 'png';
+    if (lowered.includes('jpeg') || lowered.includes('jpg')) return 'jpg';
     return 'img';
   };
 

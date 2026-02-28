@@ -61,6 +61,10 @@ async function testClipping() {
         if (caption.status === 200 && typeof caption.body === 'string') {
           console.log('✅ GET /api/clips/caption/:id – OK');
         }
+        const missing = await httpGet(`http://localhost:3230/api/clips/metadata/missing-id`);
+        if (missing.status === 404) {
+          console.log('✅ GET /api/clips/metadata/:id – 404 handled');
+        }
       }
     }
   } catch {
