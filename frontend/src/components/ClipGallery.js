@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { API_BASE_URL, CAPTION_HASHTAGS, endpoints } from '../config';
+import { copyText } from '../utils/clipboard';
 import PreviewModal from './PreviewModal';
 
 const TITLE_LIMIT = 150;
@@ -117,35 +118,6 @@ function ClipGallery({ clips, onDownload }) {
     return 'Exploratory pick';
   };
 
-  const fallbackCopy = (text) => {
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      const copied = document.execCommand('copy');
-      document.body.removeChild(ta);
-      return copied;
-    } catch {
-      return false;
-    }
-  };
-
-  const copyText = async (text) => {
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-        return 'success';
-      } catch (err) {
-        if (err?.name === 'NotAllowedError') return 'denied';
-        return fallbackCopy(text) ? 'success' : 'failed';
-      }
-    }
-    return fallbackCopy(text) ? 'success' : 'failed';
-  };
-
   const handleCopyLink = async (clipId) => {
     const url = `${API_BASE_URL}${endpoints.download(clipId)}`;
     const copied = await copyText(url);
@@ -217,8 +189,9 @@ function ClipGallery({ clips, onDownload }) {
     setBatchProgress({ done: 0, total, currentClip: null });
     for (let i = 0; i < clips.length; i++) {
       const clipTitle = getDisplayTitle(clips[i], i);
+      const fileName = getDownloadFileName(clips[i], i);
       setBatchProgress({ done: i, total, currentClip: clipTitle });
-      await onDownload(clips[i].clipId, clipTitle);
+      await onDownload(clips[i].clipId, fileName);
       setBatchProgress({ done: i + 1, total, currentClip: clipTitle });
       // Small delay between downloads to avoid browser blocking
       if (i < clips.length - 1) await new Promise(r => setTimeout(r, DOWNLOAD_DELAY_MS));
@@ -230,10 +203,15 @@ function ClipGallery({ clips, onDownload }) {
   const getDisplayTitle = (clip, index) =>
     localTitles[clip.clipId] || clip.title || `Viral Clip #${index + 1}`;
 
-  const getMotionProps = (index) => (
+  const getDownloadFileName = (clip, index) => {
+    const displayTitle = getDisplayTitle(clip, index);
+    return displayTitle.trim() || clip.clipId;
+  };
+
+  const getMotionProps = useCallback((index) => (
     shouldReduceMotion
       ? {
-        initial: false,
+        initial: { opacity: 1, y: 0 },
         animate: { opacity: 1, y: 0 },
         exit: { opacity: 1, scale: 1 },
         transition: { duration: 0 }
@@ -244,7 +222,7 @@ function ClipGallery({ clips, onDownload }) {
         exit: { opacity: 0, scale: 0.95 },
         transition: { duration: 0.3, delay: index * 0.06 }
       }
-  );
+  ), [shouldReduceMotion]);
 
   const isFiltered = filterType !== 'all' || sortBy !== 'score' || showFavoritesOnly || searchTerm.trim() || minScore > 0;
   const resetFilters = () => {
@@ -466,7 +444,7 @@ function ClipGallery({ clips, onDownload }) {
                   </button>
                   <button
                     className="btn-download"
-                    onClick={() => onDownload(clip.clipId, getDisplayTitle(clip, index))}
+                    onClick={() => onDownload(clip.clipId, getDownloadFileName(clip, index))}
                     aria-label={`Download ${getDisplayTitle(clip, index)}`}
                   >
                     ⬇️ Download

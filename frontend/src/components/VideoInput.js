@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'react-hot-toast';
+import { copyText } from '../utils/clipboard';
+import { EXAMPLE_VIDEO_URL } from '../config';
 
 const RECENT_URLS_KEY = 'recentVideoUrls';
 const MAX_RECENT = 5;
@@ -8,16 +10,11 @@ const THREE_MINUTES = 180;
 const TEN_MINUTES = 600;
 const TWENTY_MINUTES = 1200;
 const DEFAULT_RECOMMENDED_CLIPS = 5;
-const EXAMPLE_URL = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+// Assumes ~300 seconds (5 minutes) of video processed per minute of processing time.
+const VIDEO_SECONDS_PER_MINUTE_PROCESSING_TIME = 300;
 
 function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, onRecentUpdate }) {
-  const [videoUrl, setVideoUrl] = useState(() => {
-    try {
-      return localStorage.getItem('lastAnalyzedUrl') || '';
-    } catch {
-      return '';
-    }
-  });
+  const [videoUrl, setVideoUrl] = useState('');
   const [numClips, setNumClips] = useState(() => {
     const saved = localStorage.getItem('preferredNumClips');
     return saved ? parseInt(saved, 10) : DEFAULT_RECOMMENDED_CLIPS;
@@ -196,7 +193,7 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
   };
 
   const handleUseExample = () => {
-    setVideoUrl(EXAMPLE_URL);
+    setVideoUrl(EXAMPLE_VIDEO_URL);
     setValidationError(null);
   };
 
@@ -206,38 +203,11 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
     setValidationError(null);
   };
 
-  const fallbackCopy = (text) => {
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      const copied = document.execCommand('copy');
-      document.body.removeChild(ta);
-      return copied;
-    } catch {
-      return false;
-    }
-  };
-
-  const copyText = async (text) => {
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-        return true;
-      } catch {
-        return fallbackCopy(text);
-      }
-    }
-    return fallbackCopy(text);
-  };
-
   const handleCopyTitle = async () => {
     if (!videoInfo?.title) return;
     const copied = await copyText(videoInfo.title);
-    if (copied) toast.success('Video title copied!');
+    if (copied === 'success') toast.success('Video title copied!');
+    else if (copied === 'denied') toast.error('Clipboard permission denied');
     else toast.error('Unable to copy title');
   };
 
@@ -417,7 +387,7 @@ function VideoInput({ onSubmit, onGenerate, videoInfo, isProcessing, onClear, on
                 <span className="meta-item"><span aria-hidden="true">👤</span>{videoInfo.uploader}</span>
                 <span className="meta-item"><span aria-hidden="true">⏱️</span>{formatDuration(videoInfo.duration)}</span>
                 <span className="meta-item"><span aria-hidden="true">👁️</span>{formatNumber(videoInfo.viewCount || 0)} views</span>
-                <span className="meta-item"><span aria-hidden="true">⏳</span>~{Math.max(1, Math.round((videoInfo.duration || 0) / 300))} min</span>
+                <span className="meta-item"><span aria-hidden="true">⏳</span>~{Math.max(1, Math.round((videoInfo.duration || 0) / VIDEO_SECONDS_PER_MINUTE_PROCESSING_TIME))} min to process</span>
               </div>
               {videoInfo.description && (
                 <div>

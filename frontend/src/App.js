@@ -7,6 +7,15 @@ import ClipGallery from './components/ClipGallery';
 import ProcessingStatus from './components/ProcessingStatus';
 import ClipSkeleton from './components/ClipSkeleton';
 
+// Keep filenames short to avoid OS/path length issues.
+const MAX_FILENAME_LENGTH = 60;
+const MIN_PRINTABLE_ASCII = 32;
+const RESERVED_FILENAME_WORDS = new Set([
+  'CON', 'PRN', 'AUX', 'NUL',
+  'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
+  'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
+]);
+
 function App() {
   const [currentJob, setCurrentJob] = useState(null);
   const [videoInfo, setVideoInfo] = useState(null);
@@ -186,11 +195,20 @@ function App() {
 
   const sanitizeFileName = (name) => {
     if (!name) return '';
-    return name
+    let safeName = name
+      // Remove characters invalid in Windows/Unix filenames.
       .replace(/[<>:"/\\|?*]/g, '')
       .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 60);
+      .replace(/^\.+|\.+$/g, '')
+      .trim();
+    safeName = Array.from(safeName).filter((char) => char.charCodeAt(0) >= MIN_PRINTABLE_ASCII).join('');
+    safeName = safeName.trim();
+    if (!safeName) return '';
+    const baseName = safeName.split('.')[0];
+    if (RESERVED_FILENAME_WORDS.has(baseName.toUpperCase())) {
+      safeName = `${safeName}-clip`;
+    }
+    return safeName.slice(0, MAX_FILENAME_LENGTH);
   };
 
   const handleDownload = async (clipId, fileName) => {

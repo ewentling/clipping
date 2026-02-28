@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { copyText } from '../utils/clipboard';
 
 const SECONDS_PER_MINUTE = 60;
 const MILLISECONDS_PER_SECOND = 1000;
+// Wait for a small progress threshold (percent) before estimating time remaining.
+const MIN_PROGRESS_FOR_TIME_ESTIMATE = 5;
 
 function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
   const [progress, setProgress] = useState(0);
@@ -44,7 +47,7 @@ function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
     return `${mins}:${String(secs).padStart(2, '0')}`;
   };
 
-  const remainingSeconds = progress > 0 && progress < 100
+  const remainingSeconds = progress >= MIN_PROGRESS_FOR_TIME_ESTIMATE && progress < 100
     ? Math.max(0, Math.round((elapsedSeconds / progress) * (100 - progress)))
     : null;
 
@@ -53,38 +56,10 @@ function ProcessingStatus({ jobId, statusMessage, onCancel, onJumpToGallery }) {
     return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const fallbackCopy = (text) => {
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      const copied = document.execCommand('copy');
-      document.body.removeChild(ta);
-      return copied;
-    } catch {
-      return false;
-    }
-  };
-
-  const copyText = async (text) => {
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-        return true;
-      } catch {
-        return fallbackCopy(text);
-      }
-    }
-    return fallbackCopy(text);
-  };
-
   const handleCopyStatus = async () => {
     const statusText = statusMessage || 'Starting...';
     const copied = await copyText(statusText);
-    setCopyNote(copied ? 'Copied!' : 'Copy failed');
+    setCopyNote(copied === 'success' ? 'Copied!' : copied === 'denied' ? 'Permission denied' : 'Copy failed');
     setTimeout(() => setCopyNote(''), 1500);
   };
 
