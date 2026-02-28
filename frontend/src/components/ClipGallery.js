@@ -25,7 +25,7 @@ const sanitizeFileName = (name) => {
     .replace(/\s+/g, ' ')
     .replace(/^\.+|\.+$/g, '')
     .trim();
-  safeName = Array.from(safeName).filter((char) => char.charCodeAt(0) >= MIN_PRINTABLE_ASCII).join('');
+  safeName = safeName.replace(/[\u0000-\u001F\u007F]/g, '');
   safeName = safeName.trim();
   if (!safeName) return '';
   const lastDot = safeName.lastIndexOf('.');

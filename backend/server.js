@@ -77,19 +77,23 @@ const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const DEFAULT_CLIP_DURATION = 15;
 const DEFAULT_VIDEO_URL = process.env.DEMO_VIDEO_URL || 'https://example.com/demo-video';
 
-const pruneMap = (map, maxSize) => {
+const pruneMap = (map, maxSize, shouldSkip = () => false) => {
   if (!map || typeof map.size !== 'number' || map.size <= maxSize) return;
   const toRemove = map.size - maxSize;
-  for (let i = 0; i < toRemove; i += 1) {
-    const firstKey = map.keys().next().value;
-    if (firstKey === undefined) break;
-    map.delete(firstKey);
+  const iterator = map.keys();
+  let removed = 0;
+  while (removed < toRemove) {
+    const key = iterator.next().value;
+    if (key === undefined) break;
+    if (shouldSkip(key, map.get(key))) continue;
+    map.delete(key);
+    removed += 1;
   }
 };
 
 const cleanupTimer = setInterval(() => {
   pruneMap(clipStore, MAX_CLIPSTORE_SIZE);
-  pruneMap(jobs, MAX_JOBS_SIZE);
+  pruneMap(jobs, MAX_JOBS_SIZE, (_key, job) => job && job.status === 'processing');
 }, CLEANUP_INTERVAL_MS);
 
 if (cleanupTimer.unref) {
@@ -252,6 +256,7 @@ app.post('/api/clips/generate', async (req, res) => {
     console.log(`Starting clip generation for ${videoUrl}, clips: ${parsedNum}`);
 
     const generationTimer = setTimeout(() => {
+      if (!jobs.has(jobId)) return;
       try {
         const clips = buildClipsForJob(jobId, parsedNum);
         jobs.set(jobId, { status: 'completed', progress: 100, clips });
