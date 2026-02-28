@@ -10,6 +10,30 @@ const TITLE_LIMIT = 150;
 // Delay between downloads to avoid browser blocking.
 const DOWNLOAD_DELAY_MS = 600;
 const detailStyle = { fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '10px' };
+const MAX_FILENAME_LENGTH = 60;
+const MIN_PRINTABLE_ASCII = 32;
+const RESERVED_FILENAME_WORDS = new Set([
+  'CON', 'PRN', 'AUX', 'NUL',
+  'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
+  'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
+]);
+
+const sanitizeFileName = (name) => {
+  if (!name) return '';
+  let safeName = name
+    .replace(/[<>:"/\\|?*]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/^\.+|\.+$/g, '')
+    .trim();
+  safeName = Array.from(safeName).filter((char) => char.charCodeAt(0) >= MIN_PRINTABLE_ASCII).join('');
+  safeName = safeName.trim();
+  if (!safeName) return '';
+  const baseName = safeName.split('.')[0];
+  if (RESERVED_FILENAME_WORDS.has(baseName.toUpperCase())) {
+    safeName = `${safeName}-clip`;
+  }
+  return safeName.slice(0, MAX_FILENAME_LENGTH);
+};
 
 function ClipGallery({ clips, onDownload }) {
   const [previewClip, setPreviewClip] = useState(null);
@@ -248,7 +272,7 @@ function ClipGallery({ clips, onDownload }) {
     const toastId = toast.loading('Preparing captions...');
     try {
       const response = await axios.get(`${API_BASE_URL}${endpoints.caption(clip.clipId)}`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(response.data);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `${clip.clipId}.srt`);
@@ -321,7 +345,8 @@ function ClipGallery({ clips, onDownload }) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${getDownloadFileName(clip, index)}.json`);
+      const safeName = sanitizeFileName(getDownloadFileName(clip, index)) || clip.clipId;
+      link.setAttribute('download', `${safeName}.json`);
       document.body.appendChild(link);
       link.click();
       link.remove();

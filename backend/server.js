@@ -8,8 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 
 dotenv.config()
 
-const clipRoutes = require('./routes/clipRoutes');
-const videoRoutes = require('./routes/videoRoutes');;
+const videoRoutes = require('./routes/videoRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3230;
@@ -69,10 +68,32 @@ const isValidId = (id) => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test
 
 // Demo storage for generated clips/jobs
 const demoClipFile = path.join(__dirname, 'assets', 'sample-clip.mp4');
+const hasDemoClip = fs.existsSync(demoClipFile);
 const clipStore = new Map(); // clipId -> clip metadata
 const jobs = new Map(); // jobId -> { status, progress, clips }
+const MAX_CLIPSTORE_SIZE = 1000;
+const MAX_JOBS_SIZE = 1000;
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const DEFAULT_CLIP_DURATION = 15;
 const DEFAULT_VIDEO_URL = process.env.DEMO_VIDEO_URL || 'https://example.com/demo-video';
+
+const pruneMap = (map, maxSize) => {
+  if (!map || typeof map.size !== 'number' || map.size <= maxSize) return;
+  while (map.size > maxSize) {
+    const firstKey = map.keys().next().value;
+    if (firstKey === undefined) break;
+    map.delete(firstKey);
+  }
+};
+
+const cleanupTimer = setInterval(() => {
+  pruneMap(clipStore, MAX_CLIPSTORE_SIZE);
+  pruneMap(jobs, MAX_JOBS_SIZE);
+}, CLEANUP_INTERVAL_MS);
+
+if (cleanupTimer.unref) {
+  cleanupTimer.unref();
+}
 
 const demoClipTemplates = [
   {
@@ -225,10 +246,21 @@ app.post('/api/clips/generate', async (req, res) => {
     }
 
     const jobId = uuidv4();
-    const clips = buildClipsForJob(jobId, parsedNum);
-    const job = { status: 'completed', progress: 100, clips };
+    const job = { status: 'processing', progress: 0, clips: [] };
     jobs.set(jobId, job);
     console.log(`Starting clip generation for ${videoUrl}, clips: ${parsedNum}`);
+
+    setTimeout(() => {
+      try {
+        const clips = buildClipsForJob(jobId, parsedNum);
+        jobs.set(jobId, { status: 'completed', progress: 100, clips });
+        console.log(`Completed clip generation for job ${jobId}`);
+      } catch (error) {
+        console.error(`Error generating clips for job ${jobId}:`, error);
+        jobs.set(jobId, { status: 'failed', progress: 100, clips: [], error: 'Failed to generate clips' });
+      }
+    }, 1000);
+
     res.json({ success: true, jobId, message: 'Processing started' });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Internal server error' });
@@ -255,7 +287,7 @@ app.get('/api/clips/download/:clipId', (req, res) => {
   if (!clipStore.has(clipId)) {
     return res.status(404).json({ success: false, error: 'Clip not found' });
   }
-  if (!fs.existsSync(demoClipFile)) {
+  if (!hasDemoClip) {
     return res.status(500).json({ success: false, error: 'Demo clip missing on server' });
   }
   res.type('video/mp4');
@@ -351,7 +383,6 @@ app.get('/api/videos/validate', (req, res) => {
   res.json({ success: true, valid });
 });
 
-app.use('/api/clips', clipRoutes);
 app.use('/api/videos', videoRoutes);
 
 app.use(express.static(path.join(__dirname, '../frontend/build')));
